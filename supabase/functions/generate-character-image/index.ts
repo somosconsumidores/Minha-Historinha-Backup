@@ -156,7 +156,7 @@ serve(async (req) => {
     const translatedHairStyle = translateText(character.estiloCabelo);
 
     // Create detailed English prompt for Pixar 3D style
-    const prompt = `Create a character in the style Pixar/Disney 3D based EXACTLY on this physical description : name ${character.nome}, ${character.idade} years old, ${translatedGender}, with ${translatedSkinColor}, ${translatedHairColor} hair in ${translatedHairStyle} style, and ${translatedEyeColor} eyes.Never ask feedback about the choice of the image.`;
+    const prompt = `Create a character in the style Pixar/Disney 3D based EXACTLY on this physical description : name ${character.nome}, ${character.idade} years old, ${translatedGender}, with ${translatedSkinColor}, ${translatedHairColor} hair in ${translatedHairStyle} style, and ${translatedEyeColor} eyes, front view only.Never ask feedback about the choice of the image.`;
 
     console.log('Generated English prompt:', prompt);
 
