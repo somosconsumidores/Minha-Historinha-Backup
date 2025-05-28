@@ -14,15 +14,15 @@ serve(async (req) => {
   }
 
   try {
-    // Parse and extract all required fields (including characterImageUrl)
-    const { storyTitle, character, characterId, characterImageUrl } = await req.json()
+    // 1️⃣ Extrai apenas o que vem do cliente
+    const { storyTitle, character, characterId } = await req.json()
 
-    // Validate presence of all required parameters
-    if (!storyTitle || !character || !characterId || !characterImageUrl) {
-      console.log('Missing required parameters:', { storyTitle, character, characterId, characterImageUrl })
+    // 2️⃣ Validações básicas
+    if (!storyTitle || !character || !characterId) {
+      console.log('Missing required parameters:', { storyTitle, character, characterId })
       return new Response(
         JSON.stringify({
-          error: 'Missing required parameters: storyTitle, character, characterId, characterImageUrl',
+          error: 'Missing required parameters: storyTitle, character, characterId',
         }),
         {
           status: 400,
@@ -36,14 +36,24 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY não configurada')
     }
 
-    // Criar cliente Supabase (service role)
+    // 3️⃣ Cria o cliente Supabase (service role)
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    console.log(`Gerando capítulos para: ${storyTitle}`)
+    // 4️⃣ Gera a URL pública da imagem no Storage
+    const { data: urlData, error: urlError } = supabase
+      .storage
+      .from('character-images')
+      .getPublicUrl(`${characterId}.png`)
+    if (urlError) {
+      console.error('Erro ao obter URL de imagem:', urlError)
+      throw new Error('Não foi possível obter a URL da imagem do personagem')
+    }
+    const characterImageUrl = urlData.publicUrl
+    console.log(`Image URL: ${characterImageUrl}`)
 
-    // Monta prompt incluindo a URL de referência do personagem
+    // 5️⃣ Monta o prompt incluindo essa URL
     const prompt = `Crie uma história infantil completa dividida em exatamente 10 capítulos curtos baseada no título: "${storyTitle}"
 
 Personagem principal:
@@ -64,12 +74,11 @@ Retorne APENAS um JSON válido no formato:
 {
   "chapters": [
     "Texto completo do capítulo 1...",
-    "Texto completo do capítulo 2...",
     // ... até o capítulo 10
   ]
 }`
 
-    // Chama a API de chat do OpenAI
+    // 6️⃣ Chama o OpenAI
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -93,12 +102,10 @@ Retorne APENAS um JSON válido no formato:
     if (!response.ok) {
       throw new Error(`OpenAI API error: ${response.status}`)
     }
-
     const data = await response.json()
     const content = data.choices[0].message.content
-    console.log('Capítulos gerados:', content)
 
-    // Parse da resposta JSON
+    // 7️⃣ Parse e validação do JSON retornado
     let chapters: string[]
     try {
       const parsed = JSON.parse(content)
@@ -111,26 +118,20 @@ Retorne APENAS um JSON válido no formato:
       throw new Error('Formato de resposta inválido da IA')
     }
 
-    // Obter token de autorização e usuário
+    // 8️⃣ Autenticação do usuário
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      console.error('Token de autorização não fornecido no cabeçalho')
-      throw new Error('Token de autorização não fornecido')
+      console.error('Token de autorização não fornecido')
+      throw new Error('Usuário não autenticado')
     }
     const token = authHeader.replace('Bearer ', '')
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token)
-
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
     if (userError || !user) {
       console.error('Erro de autenticação ou usuário não encontrado:', userError)
       throw new Error('Usuário não autenticado')
     }
 
-    console.log('Usuário autenticado:', user.id)
-
-    // Salvar a história e capítulos no banco
+    // 9️⃣ Persiste no banco
     const { data: storyData, error: storyError } = await supabase
       .from('generated_stories')
       .insert({
@@ -150,14 +151,12 @@ Retorne APENAS um JSON válido no formato:
       })
       .select()
       .single()
-
     if (storyError) {
       console.error('Erro ao salvar história:', storyError)
       throw new Error('Erro ao salvar história no banco de dados')
     }
 
-    console.log('História salva com sucesso:', storyData.id)
-
+    // 10️⃣ Retorna sucesso
     return new Response(
       JSON.stringify({
         chapters,
@@ -169,6 +168,7 @@ Retorne APENAS um JSON válido no formato:
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )
+
   } catch (error) {
     console.error('Erro ao gerar capítulos:', error)
     return new Response(
