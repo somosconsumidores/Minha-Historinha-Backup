@@ -1,31 +1,37 @@
+// src/components/StoryWithIllustrations.tsx
+
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useStories } from '@/hooks/useStories';
 
-interface StoryProps {
+interface StoryWithIllustrationsProps {
   characterId: string;
   storyTitle: string;
 }
 
-export const StoryWithIllustrations: React.FC<StoryProps> = ({ characterId, storyTitle }) => {
-  const { generateStory, isLoading } = useStories();
+export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
+  characterId,
+  storyTitle,
+}) => {
   const { toast } = useToast();
+  const { generateStory, isLoading } = useStories();
 
   const [chapters, setChapters] = useState<string[]>([]);
   const [illustrations, setIllustrations] = useState<string[]>([]);
 
+  // Função chamada ao clicar no botão
   const handleGenerate = async () => {
     try {
-      // 1️⃣ Gera capítulos e ilustrações
-      const { chapters, illustrations } = await generateStory.mutateAsync({
-        characterId,
-        storyTitle,
-      });
+      // Chama a mutation para gerar capítulos e ilustrações
+      const result = await generateStory.mutateAsync({ characterId, storyTitle });
+      const { chapters, illustrations } = result;
+
+      // Atualiza estado para renderizar na UI
       setChapters(chapters);
       setIllustrations(illustrations);
 
-      // 2️⃣ Salva cada ilustração no Supabase
+      // Salva registros na tabela story_illustrations
       const records = chapters.map((_, idx) => ({
         character_id:   characterId,
         chapter_number: idx + 1,
@@ -34,13 +40,12 @@ export const StoryWithIllustrations: React.FC<StoryProps> = ({ characterId, stor
       }));
       const { error } = await supabase.from('story_illustrations').insert(records);
       if (error) {
-        console.error('Erro ao salvar ilustrações:', error);
-        toast({ title: 'Erro', description: 'Não foi possível salvar as ilustrações.' });
+        toast({ title: 'Erro', description: 'Falha ao salvar ilustrações.' });
       } else {
-        toast({ title: 'Sucesso', description: 'História e ilustrações salvas com sucesso!' });
+        toast({ title: 'Sucesso', description: 'História e ilustrações salvas!' });
       }
     } catch (err: any) {
-      console.error('Erro na geração:', err);
+      console.error('Erro ao gerar história:', err);
       toast({ title: 'Erro', description: err.message });
     }
   };
@@ -48,9 +53,9 @@ export const StoryWithIllustrations: React.FC<StoryProps> = ({ characterId, stor
   return (
     <div className="p-4">
       <button
-        className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
         onClick={handleGenerate}
         disabled={isLoading}
+        className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
       >
         {isLoading ? 'Gerando...' : 'Gerar História e Ilustrações'}
       </button>
