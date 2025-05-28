@@ -110,7 +110,7 @@ export const useStories = () => {
         // 1) Buscar URL da imagem de referência
         const { data: charData, error: charError } = await supabase
           .from('characters')
-          .select('image_url')
+          .select('nome, idade, sexo, corPele, corCabelo, corOlhos')
           .eq('id', characterId)
           .single();
         if (charError || !charData) {
@@ -127,7 +127,7 @@ export const useStories = () => {
               apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
               Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
             },
-            body: JSON.stringify({ storyTitle, characterId, characterImageUrl: charData.image_url })
+            body: JSON.stringify({ storyTitle, characterId, character: charData })
           }
         );
         if (!res.ok) {
