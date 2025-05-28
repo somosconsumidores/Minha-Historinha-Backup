@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -68,7 +67,6 @@ export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading
     });
 
     try {
-      // Obter a sessão atual para garantir que temos o token
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -76,7 +74,7 @@ export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading
       }
 
       console.log('Enviando requisição com token de autenticação');
-
+      console.log("StorySelectionStep character:", JSON.stringify(character)); // <-- ADDED THIS LINE
       const { data, error } = await supabase.functions.invoke('generate-story-chapters', {
         body: {
           storyTitle: selectedTitle,
@@ -112,7 +110,6 @@ export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading
     }
   };
 
-  // Gerar títulos automaticamente quando o componente carrega
   useEffect(() => {
     if (character.nome && character.sexo) {
       generateStoryTitles();
@@ -142,11 +139,7 @@ export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading
             {storyTitles.map((story) => (
               <Card 
                 key={story.id}
-                className={`p-4 cursor-pointer transition-all duration-300 border-2 ${
-                  selectedTitle === story.title
-                    ? 'border-fairy-purple bg-fairy-purple/10 shadow-lg'
-                    : 'border-fairy-purple/30 hover:border-fairy-purple/60 hover:bg-fairy-purple/5'
-                }`}
+                className={`p-4 cursor-pointer transition-all duration-300 border-2 ${selectedTitle === story.title ? 'border-fairy-purple bg-fairy-purple/10 shadow-lg' : 'border-fairy-purple/30 hover:border-fairy-purple/60 hover:bg-fairy-purple/5'}`}
                 onClick={() => setSelectedTitle(story.title)}
               >
                 <div className="flex items-start gap-3">
@@ -169,49 +162,16 @@ export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {onBack && (
-                <Button
-                  onClick={onBack}
-                  variant="outline"
-                  className="flex-1 py-3 rounded-2xl font-fredoka font-medium border-2 border-fairy-blue/30 hover:bg-fairy-blue/10"
-                >
+                <Button onClick={onBack} variant="outline" className="flex-1 py-3 rounded-2xl font-fredoka font-medium border-2 border-fairy-blue/30 hover:bg-fairy-blue/10">
                   ← Voltar
                 </Button>
               )}
-
-              <Button
-                onClick={generateStoryTitles}
-                disabled={isGeneratingTitles || isGeneratingStory}
-                variant="outline"
-                className="flex-1 py-3 rounded-2xl font-fredoka font-medium border-2 border-fairy-blue/30 hover:bg-fairy-blue/10"
-              >
-                {isGeneratingTitles ? (
-                  <>
-                    <div className="animate-spin mr-2">🔄</div>
-                    Gerando...
-                  </>
-                ) : (
-                  <>
-                    🔄 Gerar Mais Opções
-                  </>
-                )}
+              <Button onClick={generateStoryTitles} disabled={isGeneratingTitles || isGeneratingStory} variant="outline" className="flex-1 py-3 rounded-2xl font-fredoka font-medium border-2 border-fairy-blue/30 hover:bg-fairy-blue/10">
+                {isGeneratingTitles ? (<><div className="animate-spin mr-2">🔄</div>Gerando...</>) : (<>🔄 Gerar Mais Opções</>)}
               </Button>
             </div>
-
-            <Button
-              onClick={handleSelectStory}
-              disabled={!selectedTitle || isGeneratingStory || isLoading}
-              className="w-full py-3 rounded-2xl font-fredoka font-medium bg-gradient-to-r from-fairy-purple to-fairy-pink hover:from-fairy-pink hover:to-fairy-purple text-white shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              {isGeneratingStory ? (
-                <>
-                  <div className="animate-spin mr-2">📖</div>
-                  Criando História...
-                </>
-              ) : (
-                <>
-                  ✨ Escolher Esta História
-                </>
-              )}
+            <Button onClick={handleSelectStory} disabled={!selectedTitle || isGeneratingStory || isLoading} className="w-full py-3 rounded-2xl font-fredoka font-medium bg-gradient-to-r from-fairy-purple to-fairy-pink hover:from-fairy-pink hover:to-fairy-purple text-white shadow-lg hover:shadow-xl transition-all duration-300">
+              {isGeneratingStory ? (<><div className="animate-spin mr-2">📖</div>Criando História...</>) : (<>✨ Escolher Esta História</>)}
             </Button>
           </div>
         </>
