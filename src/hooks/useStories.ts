@@ -16,7 +16,46 @@ export const useStories = () => {
     async ({ characterId, storyTitle }) => {
       setIsLoading(true);
       try {
+        // Pega URL do personagem
         const { data: charData, error: charError } = await supabase
           .from('characters')
           .select('image_url')
-          .eq
+          .eq('id', characterId)
+          .single();
+        if (charError || !charData) {
+          throw new Error(charError?.message || 'Personagem não encontrado');
+        }
+
+        // --- fetch direto para a Edge Function ---
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/generate-story-chapters`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // use anon key para autenticar
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              storyTitle,
+              characterId,
+              characterImageUrl: charData.image_url,
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => null);
+          throw new Error(err?.details || `Erro ${res.status}`);
+        }
+
+        return (await res.json()) as GenerateChaptersResult;
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  );
+
+  return { generateStory, isLoading };
+};
