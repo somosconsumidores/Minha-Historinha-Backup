@@ -1,5 +1,3 @@
-// src/components/StoryWithIllustrations.tsx
-
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,18 +18,19 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   const [chapters, setChapters] = useState<string[]>([]);
   const [illustrations, setIllustrations] = useState<string[]>([]);
 
-  // Função chamada ao clicar no botão
   const handleGenerate = async () => {
     try {
       // Chama a mutation para gerar capítulos e ilustrações
-      const result = await generateStory.mutateAsync({ characterId, storyTitle });
-      const { chapters, illustrations } = result;
+      const { chapters, illustrations } = await generateStory.mutateAsync({
+        characterId,
+        storyTitle,
+      });
 
-      // Atualiza estado para renderizar na UI
+      // Atualiza estados para renderizar resultados
       setChapters(chapters);
       setIllustrations(illustrations);
 
-      // Salva registros na tabela story_illustrations
+      // Persiste registros em story_illustrations
       const records = chapters.map((_, idx) => ({
         character_id:   characterId,
         chapter_number: idx + 1,
@@ -40,12 +39,11 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
       }));
       const { error } = await supabase.from('story_illustrations').insert(records);
       if (error) {
-        toast({ title: 'Erro', description: 'Falha ao salvar ilustrações.' });
-      } else {
-        toast({ title: 'Sucesso', description: 'História e ilustrações salvas!' });
+        throw error;
       }
+      toast({ title: 'Sucesso', description: 'História e ilustrações salvas!' });
     } catch (err: any) {
-      console.error('Erro ao gerar história:', err);
+      console.error('Erro ao gerar história e ilustrações:', err);
       toast({ title: 'Erro', description: err.message });
     }
   };
