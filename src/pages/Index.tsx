@@ -26,9 +26,9 @@ const Index: React.FC = () => {
         {/* Assim que o personagem for criado, renderiza o StoryWithIllustrations */}
         {characterData && (
           <StoryWithIllustrations
-            characterId={characterData.id}
-            storyTitle={`A Grande Aventura do ${characterData.name}`}
-          />
+  characterId={character.id}
+  storyTitle={seuTitulo}
+/>
         )}
       </div>
     </div>
