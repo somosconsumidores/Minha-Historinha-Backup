@@ -1,8 +1,9 @@
 // src/hooks/useStories.ts
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useState, useCallback } from 'react'; // Added useCallback for completeness, though not strictly needed for useMutation's function if defined inline
+import { useMutation, useQueryClient } from '@tanstack/react-query'; // Added useQueryClient if you plan to use it for cache invalidation
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Character } from '@/types/Character'; // Ensure this type uses snake_case
 
 export interface Story {
   id: string;
@@ -11,6 +12,8 @@ export interface Story {
   user_id: string;
   chapters: string[];
   created_at: string;
+  // You might want to add illustration URLs here if fetching them together later
+  // chapter_illustrations?: { chapter_index: number; image_url: string }[]; 
 }
 
 type GenerateChaptersInput = {
@@ -18,6 +21,7 @@ type GenerateChaptersInput = {
   storyTitle: string;
 };
 
+// Result type expected by StoryWithIllustrations.tsx from this hook's mutation
 type GenerateStoryHookResult = {
   chapters: string[];
   storyId: string;
@@ -25,97 +29,141 @@ type GenerateStoryHookResult = {
 };
 
 export const useStories = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // For getCharacterStory & getUserStories
   const { toast } = useToast();
+  const queryClient = useQueryClient(); // For potential cache invalidation
 
-  const getCharacterStory = async (characterId: string): Promise<Story | null> => {
+  const getCharacterStory = useCallback(async (characterId: string): Promise<Story | null> => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('generated_stories').select('*').eq('character_id', characterId).single();
+      const { data, error } = await supabase
+        .from('generated_stories')
+        .select('*')
+        .eq('character_id', characterId)
+        .single();
+
       if (error) {
-        if (error.code === 'PGRST116') return null;
+        if (error.code === 'PGRST116') return null; // No story found, not necessarily an error
+        console.error('Erro ao buscar história específica:', error);
         throw error;
       }
-      const chapters = [data.chapter_1, data.chapter_2, data.chapter_3, data.chapter_4, data.chapter_5, data.chapter_6, data.chapter_7, data.chapter_8, data.chapter_9, data.chapter_10].filter(Boolean);
-      return { id: data.id, title: data.title, character_id: data.character_id, user_id: data.user_id, chapters, created_at: data.created_at };
+
+      const chapters = Array.from({ length: 10 }, (_, i) => data[`chapter_${i + 1}`]).filter(Boolean) as string[];
+      
+      return {
+        id: data.id,
+        title: data.title,
+        character_id: data.character_id,
+        user_id: data.user_id,
+        chapters,
+        created_at: data.created_at,
+      };
     } catch (err: any) {
-      console.error('Erro ao buscar história:', err);
-      toast({ title: '⚠️ Aviso', description: 'Não foi possível carregar a história.' });
+      console.error('Exceção em getCharacterStory:', err);
+      toast({ title: '⚠️ Aviso', description: err.message || 'Não foi possível carregar a história.' });
       return null;
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
-  const getUserStories = async (): Promise<Story[]> => {
+  const getUserStories = useCallback(async (): Promise<Story[]> => {
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase.from('generated_stories').select('*').eq('user_id', user?.id || '').order('created_at', { ascending: false });
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        throw authError || new Error('Usuário não autenticado.');
+      }
+      
+      const { data, error } = await supabase
+        .from('generated_stories')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
-      return data.map((s) => ({ id: s.id, title: s.title, character_id: s.character_id, user_id: s.user_id, chapters: [s.chapter_1, s.chapter_2, s.chapter_3, s.chapter_4, s.chapter_5, s.chapter_6, s.chapter_7, s.chapter_8, s.chapter_9, s.chapter_10].filter(Boolean), created_at: s.created_at }));
+
+      return data.map((s) => ({
+        id: s.id,
+        title: s.title,
+        character_id: s.character_id,
+        user_id: s.user_id,
+        chapters: Array.from({ length: 10 }, (_, i) => s[`chapter_${i + 1}`]).filter(Boolean) as string[],
+        created_at: s.created_at,
+      }));
     } catch (err: any) {
       console.error('Erro ao buscar todas as histórias:', err);
-      toast({ title: '❌ Erro', description: 'Não foi possível carregar suas histórias.' });
+      toast({ title: '❌ Erro', description: err.message || 'Não foi possível carregar suas histórias.' });
       return [];
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   const generateStory = useMutation<GenerateStoryHookResult, Error, GenerateChaptersInput>(
     async ({ characterId, storyTitle }) => {
-      try {
-        const { data: charData, error: charError } = await supabase
-          .from('characters')
-          .select('id, nome, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo') // Corrected to snake_case
-          .eq('id', characterId)
-          .single();
+      // Fetch character details (ensure snake_case as per your Character type)
+      const { data: charData, error: charError } = await supabase
+        .from('characters')
+        .select('id, nome, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo, image_url') // Fetch all needed, including image_url
+        .eq('id', characterId)
+        .single();
 
-        if (charError || !charData) {
-          throw new Error(charError?.message || 'Personagem não encontrado em useStories.');
-        }
+      if (charError || !charData) {
+        throw new Error(charError?.message || 'Personagem não encontrado em useStories.');
+      }
 
-        // console.log("useStories charData (for generate-story-chapters):", JSON.stringify(charData)); 
+      const sessionData = await supabase.auth.getSession();
+      const accessToken = sessionData.data.session?.access_token;
 
-        const sessionData = await supabase.auth.getSession();
-        const accessToken = sessionData.data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("Usuário não autenticado. Não foi possível gerar a história.");
+      }
 
-        if (!accessToken) {
-            toast({title: 'Erro de Autenticação', description: 'Sessão não encontrada, faça login novamente.', variant: 'destructive'});
-            throw new Error("Usuário não autenticado. Não foi possível gerar a história.");
-        }
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/generate-story-chapters`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, 
+        },
+        body: JSON.stringify({ storyTitle, characterId, character: charData }) 
+      });
 
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/generate-story-chapters`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ storyTitle, characterId, character: charData })
+      if (!res.ok) {
+        const errText = await res.text();
+        let errorDetails = errText;
+        try {
+          const errJson = JSON.parse(errText);
+          errorDetails = errJson.details || errJson.error || errText;
+        } catch (e) { /* Ignore parsing error, use raw text */ }
+        throw new Error(`Erro ${res.status}: ${errorDetails}`);
+      }
+
+      const responseData = await res.json();
+      if (!responseData.chapters || !responseData.storyId) {
+        console.error('Invalid response from generate-story-chapters:', responseData);
+        throw new Error('Resposta inválida da função de gerar capítulos. Faltando `chapters` ou `storyId`.');
+      }
+
+      return {
+        chapters: responseData.chapters,
+        storyId: responseData.storyId,
+        message: responseData.message 
+      };
+    },
+    {
+      onError: (error: Error) => {
+        toast({
+          title: '❌ Erro ao Gerar História',
+          description: error.message || 'Falha na comunicação com o servidor.',
+          variant: 'destructive',
         });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Request failed with status ' + res.status }));
-          throw new Error(err.details || err.error || `Erro ${res.status}`);
-        }
-
-        const responseData = await res.json();
-        if (!responseData.chapters || !responseData.storyId) {
-          console.error('Invalid response from generate-story-chapters:', responseData);
-          throw new Error('Resposta inválida da função de gerar capítulos.');
-        }
-
-        return {
-          chapters: responseData.chapters,
-          storyId: responseData.storyId,
-          message: responseData.message 
-        };
-
-      } catch (error: any) {
-        toast({title: 'Erro ao Gerar História', description: error.message || 'Falha na comunicação com o servidor.', variant: 'destructive'});
-        throw error;
+      },
+      onSuccess: () => {
+        // Example: Invalidate queries that fetch stories so UI updates if needed
+        // queryClient.invalidateQueries(['userStories']); 
+        // queryClient.invalidateQueries(['characterStory', relevantCharacterId]);
       }
     }
   );
@@ -124,6 +172,7 @@ export const useStories = () => {
     getCharacterStory,
     getUserStories,
     generateStory,
-    isLoading,
+    isLoading, // General loading for get* functions
+    // component will use generateStory.isLoading, generateStory.isError, etc. for mutation state
   };
 };
