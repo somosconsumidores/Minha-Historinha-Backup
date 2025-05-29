@@ -4,19 +4,22 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useStories } from '@/hooks/useStories';
-import { Character } from '@/types/Character'; // Assuming Character type includes snake_case fields
+import { Character } from '@/types/Character';
 
 interface StoryWithIllustrationsProps {
   characterId: string;
   storyTitle: string;
 }
 
-type CharacterDetails = Character & { 
-  image_url: string; 
+// This type should align with the actual fields fetched and used.
+// Your base 'Character' type should ideally be updated to snake_case.	ype CharacterDetails = Character & {
+  image_url: string;
+  // Explicitly listing snake_case properties expected from the select query
+  // This helps if 'Character' type is more generic or has camelCase.
   cor_pele?: string;
   cor_cabelo?: string;
   cor_olhos?: string;
-  estilo_cabelo?: string; // Correct 'i'
+  estilo_cabelo?: string; // Corrected to 'estilo_cabelo'
 };
 
 export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
@@ -48,7 +51,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
 
         if (error) throw error;
         if (data) {
-          setCharacterDetails(data as CharacterDetails); 
+          setCharacterDetails(data as CharacterDetails);
         }
       } catch (err: any) {
         console.error('Erro ao buscar detalhes do personagem:', err);
@@ -63,9 +66,9 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   }, [characterId, toast]);
 
   const handleGenerateAllChapterIllustrations = async (
-    storyIdParam: string, 
-    chaptersParam: string[], 
-    charDetailsParam: CharacterDetails
+    storyIdParam: string,
+    chaptersParam: string[],
+    charDetailsParam: CharacterDetails | null // Allow null check
   ) => {
     if (!storyIdParam || !chaptersParam.length || !charDetailsParam) {
       console.error('Missing data for illustration generation:', { storyIdParam, chaptersParam, charDetailsParam });
@@ -80,13 +83,13 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
     const appearanceParts = [];
     if (charDetailsParam.cor_pele) appearanceParts.push(`Pele ${charDetailsParam.cor_pele}`);
     if (charDetailsParam.cor_cabelo) appearanceParts.push(`cabelo ${charDetailsParam.cor_cabelo}`);
-    if (charDetailsParam.estilo_cabelo) appearanceParts.push(charDetailsParam.estilo_cabelo);
+    if (charDetailsParam.estilo_cabelo) appearanceParts.push(charDetailsParam.estilo_cabelo); // Corrected: estilo_cabelo
     if (charDetailsParam.cor_olhos) appearanceParts.push(`olhos ${charDetailsParam.cor_olhos}`);
     if (charDetailsParam.sexo) appearanceParts.push(charDetailsParam.sexo);
     if (charDetailsParam.idade) appearanceParts.push(`${charDetailsParam.idade} anos`);
-    
+
     const characterAppearance = appearanceParts.filter(Boolean).join(', ') || 'Aparência não especificada';
-    console.log("Constructed characterAppearance:", characterAppearance);
+    console.log("Constructed characterAppearance for prompt:", characterAppearance);
 
     try {
       for (let i = 0; i < chaptersParam.length; i++) {
@@ -97,7 +100,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
           console.log(`Ilustração para cap. ${chapterIndex} já existe. Pulando.`);
           continue;
         }
-        
+
         console.log(`Gerando ilustração para cap. ${chapterIndex} da história ${storyIdParam}`);
         toast({ title: `🖼️ Ilustrando Cap. ${chapterIndex + 1}/${chaptersParam.length}` });
 
@@ -144,15 +147,21 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
 
     try {
       const result = await generateStory.mutateAsync({
-        characterId, 
+        characterId,
         storyTitle,
       });
-      
+
       if (result && result.chapters && result.storyId) {
         setChapters(result.chapters);
         setStoryId(result.storyId);
         toast({ title: '✅ História Gerada!', description: 'Iniciando geração de ilustrações...' });
-        await handleGenerateAllChapterIllustrations(result.storyId, result.chapters, characterDetails); 
+        // Ensure characterDetails is not null before calling
+        if (characterDetails) { // Redundant check, already checked at the start of function
+            await handleGenerateAllChapterIllustrations(result.storyId, result.chapters, characterDetails);
+        } else {
+            // This case should ideally not be reached if the initial check is done.
+            toast({ title: 'Atenção', description: 'Detalhes do personagem não disponíveis para iniciar ilustrações.'});
+        }
       } else {
         console.error('generateStory não retornou a estrutura esperada:', result);
         toast({ title: 'Erro Inesperado', description: 'Geração da história falhou em retornar dados válidos.' });
@@ -164,13 +173,14 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
       setIsLoadingStory(false);
     }
   };
-  
+
   const mainButtonDisabled = isLoadingCharacter || isLoadingStory || isLoadingIllustrations || !characterDetails;
   let buttonText = '✨ Gerar História e Ilustrações';
   if (isLoadingCharacter) buttonText = '🔍 Carregando Personagem...';
   else if (isLoadingStory) buttonText = '📖 Gerando História...';
   else if (isLoadingIllustrations) buttonText = '🎨 Gerando Ilustrações...';
-  else if (chapters.length > 0) buttonText = '🎉 Gerar Novamente?';
+  else if (chapters.length > 0 && Object.keys(chapterIllustrations).length === chapters.length) buttonText = '✅ Tudo Pronto!';
+  else if (chapters.length > 0) buttonText = '🎨 Gerar Ilustrações Pendentes'; // Or specific text
 
   return (
     <div className="p-4">
@@ -180,11 +190,11 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
 
       {isLoadingCharacter && <p className="text-center my-4">Carregando detalhes do personagem...</p>}
       {!isLoadingCharacter && !characterDetails && characterId && <p className="text-center my-4 text-red-500">Não foi possível carregar os detalhes do personagem.</p>}
-      
+
       {characterDetails && !isLoadingCharacter && (
         <div className="mb-4 p-4 border rounded-lg bg-slate-50">
           <h3 className="text-xl font-semibold">{characterDetails.nome}</h3>
-          {characterDetails.image_url && <img src={characterDetails.image_url} alt={characterDetails.nome} className="w-32 h-32 rounded-md my-2 object-cover" />}          
+          {characterDetails.image_url && <img src={characterDetails.image_url} alt={characterDetails.nome} className="w-32 h-32 rounded-md my-2 object-cover" />}
         </div>
       )}
 
