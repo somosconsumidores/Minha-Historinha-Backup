@@ -14,13 +14,13 @@ interface StoryWithIllustrationsProps {
 // Define a more specific type for character details if possible
 // For now, using 'any', but should match Character and include image_url and appearance fields
 // You'll likely want to update your base Character type to use snake_case for DB fields
-// or create a specific client-side type that maps from the snake_case DB fields.	ype CharacterDetails = Character & { 
+// or create a specific client-side type that maps from the snake_case DB fields.
+type CharacterDetails = Character & {  // Ensure 'type' starts cleanly here
   image_url: string;
-  // These will be fetched with snake_case from DB, ensure your Character type or this alias handles it
   cor_pele?: string;
   cor_cabelo?: string;
   cor_olhos?: string;
-  estlio_cabelo?: string; 
+  estlio_cabelo?: string;
 };
 
 
