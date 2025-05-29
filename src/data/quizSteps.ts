@@ -1,32 +1,31 @@
-
 import { QuizStep } from '../types/Character';
 
 export const quizSteps: QuizStep[] = [
   {
     id: 1,
     title: 'Qual é o nome do seu personagem?',
-    field: 'nome',
+    field: 'nome', // Stays as 'nome'
     type: 'text',
     placeholder: 'Digite um nome mágico...'
   },
   {
     id: 2,
     title: 'Quantos anos tem o seu personagem?',
-    field: 'idade',
+    field: 'idade', // Stays as 'idade'
     type: 'number',
     placeholder: 'Digite a idade'
   },
   {
     id: 3,
     title: 'Qual é o sexo do seu personagem?',
-    field: 'sexo',
+    field: 'sexo', // Stays as 'sexo'
     type: 'select',
     options: ['Masculino', 'Feminino', 'Outro']
   },
   {
     id: 4,
     title: 'Qual é a cor da pele?',
-    field: 'cor_pele',
+    field: 'cor_pele', // snake_case
     type: 'select',
     options: [
       'Pele Clara',
@@ -41,7 +40,7 @@ export const quizSteps: QuizStep[] = [
   {
     id: 5,
     title: 'Qual é a cor do cabelo?',
-    field: 'cor_cabelo',
+    field: 'cor_cabelo', // snake_case
     type: 'select',
     options: [
       'Preto',
@@ -59,7 +58,7 @@ export const quizSteps: QuizStep[] = [
   {
     id: 6,
     title: 'Qual é a cor dos olhos?',
-    field: 'cor_olhos',
+    field: 'cor_olhos', // snake_case
     type: 'select',
     options: [
       'Castanhos',
@@ -75,7 +74,7 @@ export const quizSteps: QuizStep[] = [
   {
     id: 7,
     title: 'Qual é o estilo do cabelo?',
-    field: 'estilo_cabelo',
+    field: 'estilo_cabelo', // Corrected: snake_case with 'i'
     type: 'select',
     options: [
       'Liso e Curto',

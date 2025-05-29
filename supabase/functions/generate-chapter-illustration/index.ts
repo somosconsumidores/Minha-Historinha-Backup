@@ -48,7 +48,7 @@ serve(async (req) => {
     const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // 1. Construct the prompt for DALL-E
-    const truncatedChapterText = truncateText(chapterText, 400); // Max length for prompt segment
+    const truncatedChapterText = truncateText(chapterText, 400);
     const prompt = `Create a vibrant and child-friendly illustration in a Pixar/Disney 3D style for a children's story chapter. The scene should primarily depict the events or mood from the following text: "${truncatedChapterText}" The main character, ${characterName}, who looks like this: "${characterAppearance}", should be featured prominently in the scene, reacting appropriately to the chapter's events. Maintain the character's described appearance. For artistic style and character rendering inspiration, consider this reference: ${characterImageUrl} The illustration should be suitable for a storybook page. Do not include any text or words in the image itself. Focus on a clear, engaging visual narrative.`;
 
     console.log(`Generating illustration for story ${storyId}, chapter ${chapterIndex} with prompt: ${prompt}`);
@@ -65,7 +65,7 @@ serve(async (req) => {
         prompt: prompt,
         n: 1,
         size: "1024x1024",
-        quality: "standard", // Or "hd" if preferred and budget allows
+        quality: "standard",
       }),
     });
 
@@ -103,10 +103,10 @@ serve(async (req) => {
     // 4. Upload the image to Supabase Storage
     const storagePath = `${storyId}/chapter_${chapterIndex}.png`;
     const { data: uploadData, error: uploadError } = await supabaseAdminClient.storage
-      .from("story-illustrations") // New bucket
+      .from("story-illustrations")
       .upload(storagePath, imageBlob, {
         contentType: "image/png",
-        upsert: true, // Overwrite if it already exists for some reason
+        upsert: true,
       });
 
     if (uploadError) {
@@ -143,7 +143,6 @@ serve(async (req) => {
 
     if (dbError) {
       console.error("Database insert error:", dbError);
-      // If DB insert fails, should we delete the uploaded image? For now, let's not, but consider for robustness.
       return new Response(
         JSON.stringify({ error: "Failed to save illustration metadata to database.", details: dbError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

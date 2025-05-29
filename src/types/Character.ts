@@ -1,4 +1,3 @@
-
 export interface Character {
   id?: string;
   user_id?: string;
@@ -8,9 +7,9 @@ export interface Character {
   cor_pele: string;
   cor_cabelo: string;
   cor_olhos: string;
-  estilo_cabelo: string;
+  estilo_cabelo: string; // Corrected to 'estilo_cabelo'
   image_url?: string;
-  storyTitle?: string;
+  storyTitle?: string;   // Client-side field
   created_at?: string;
   updated_at?: string;
 }

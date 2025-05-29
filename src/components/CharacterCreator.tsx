@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { Character } from '../types/Character';
 import { quizSteps } from '../data/quizSteps';
 import { QuizStep } from './QuizStep';
 import { CharacterResult } from './CharacterResult';
 import { StorySelectionStep } from './StorySelectionStep';
-import { StoryWithIllustrations } from './StoryWithIllustrations'; // Added import
+import { StoryWithIllustrations } from './StoryWithIllustrations';
 import { useToast } from '@/hooks/use-toast';
 import { useCharacters } from '@/hooks/useCharacters';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,10 +18,10 @@ export const CharacterCreator = () => {
     nome: '',
     idade: 0,
     sexo: 'Masculino',
-    cor_pele: '',
-    cor_cabelo: '',
-    cor_olhos: '',
-    estilo_cabelo: ''
+    cor_pele: '',       // Corrected to snake_case
+    cor_cabelo: '',     // Corrected to snake_case
+    cor_olhos: '',      // Corrected to snake_case
+    estilo_cabelo: ''   // Corrected to snake_case with 'i'
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string>('');
@@ -35,47 +34,30 @@ export const CharacterCreator = () => {
 
   const handleNext = async () => {
     console.log('🚀 Próximo step - Índice atual:', currentStepIndex, 'Total steps:', quizSteps.length);
-    
+
     if (currentStepIndex < quizSteps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
       console.log('➡️ Avançando para step:', currentStepIndex + 1);
     } else {
-      // Quiz completed - save character to database
       console.log('🎉 Quiz completo! Salvando personagem...');
-      console.log('👤 Dados do personagem:', character);
-      
+      console.log('👤 Dados do personagem (antes de salvar):', JSON.stringify(character, null, 2)); 
+
       try {
-        const characterId = await saveCharacter(character);
-        
+        const characterId = await saveCharacter(character); 
+
         if (characterId) {
           setSavedCharacterId(characterId);
           setCharacter(prev => ({ ...prev, id: characterId }));
           console.log('✅ Personagem salvo com ID:', characterId);
-          
-          toast({
-            title: "🎉 Personagem criado!",
-            description: `${character.nome} está pronto para ganhar vida!`,
-            className: "text-black",
-          });
+          toast({ title: "🎉 Personagem criado!", description: `${character.nome} está pronto!` });
         } else {
           console.log('⚠️ Personagem criado mas sem ID retornado');
-          toast({
-            title: "🎉 Personagem criado!",
-            description: `${character.nome} está pronto para ganhar vida!`,
-            className: "text-black",
-          });
+          toast({ title: "🎉 Personagem criado!", description: `${character.nome} está pronto!` });
         }
-        
-        console.log('🎭 Mudando para flowStep = result');
         setFlowStep('result');
-        
       } catch (error) {
         console.error('❌ Erro ao salvar personagem:', error);
-        toast({
-          title: "❌ Erro ao salvar",
-          description: "Houve um problema ao salvar o personagem. Tente novamente.",
-          className: "text-black",
-        });
+        toast({ title: "❌ Erro ao salvar", description: (error as Error).message || "Houve um problema ao salvar." });
       }
     }
   };
@@ -88,7 +70,7 @@ export const CharacterCreator = () => {
   };
 
   const handleValueChange = (value: string | number) => {
-    const field = currentStep.field;
+    const field = currentStep.field; 
     setCharacter(prev => ({
       ...prev,
       [field]: value
@@ -117,49 +99,44 @@ export const CharacterCreator = () => {
 
   const handleGenerateImage = async () => {
     setIsGenerating(true);
-    toast({
-      title: "🎨 Gerando imagem...",
-      description: "Criando seu personagem no estilo Pixar 3D!",
-      className: "text-black",
-    });
+    toast({ title: "🎨 Gerando imagem...", description: "Criando seu personagem!" });
     
+    console.log("Sending this character to generate-character-image:", JSON.stringify(character, null, 2));
+
     try {
       const { data, error } = await supabase.functions.invoke('generate-character-image', {
-        body: { character }
+        body: { character } 
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.imageUrl) {
         setGeneratedImageUrl(data.imageUrl);
-        
         if (savedCharacterId) {
           await updateCharacterImage(savedCharacterId, data.imageUrl);
         }
-        
-        toast({
-          title: "✨ Imagem gerada com sucesso!",
-          description: "Seu personagem Pixar 3D está pronto!",
-          className: "text-black",
-        });
-        
+        toast({ title: "✨ Imagem gerada!", description: "Personagem pronto!" });
         console.log('Generated image URL:', data.imageUrl);
+      } else {
+        throw new Error("Image URL not returned from function");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating image:', error);
-      toast({
-        title: "❌ Erro ao gerar imagem",
-        description: "Tente novamente em alguns instantes.",
-        className: "text-black",
-      });
+      toast({ title: "❌ Erro ao gerar imagem", description: error.message || "Tente novamente." });
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleCreateStory = () => {
+    if (!savedCharacterId) {
+        toast({title: "Aguarde!", description: "O personagem precisa ser salvo primeiro (geralmente acontece ao final do quiz)."});
+        return;
+    }
+    if (!generatedImageUrl) {
+        toast({title: "Aguarde!", description: "A imagem do personagem precisa ser gerada primeiro."}) ;
+        return;
+    }
     console.log('📚 Iniciando criação de história...');
     setFlowStep('story-selection');
   };
@@ -168,12 +145,11 @@ export const CharacterCreator = () => {
     console.log('✅ História selecionada:', storyTitle);
     setSelectedStoryTitle(storyTitle);
     setCharacter(prev => ({ ...prev, storyTitle }));
-    // Aqui podemos adicionar lógica para navegar para a visualização da história
     setFlowStep('story-view');
     
     toast({
-      title: "📖 História criada!",
-      description: `"${storyTitle}" foi criada para ${character.nome}!`,
+      title: "📖 História Pronta para Visualizar!",
+      description: `Preparando para ver "${storyTitle}" com ${character.nome}!`, 
       className: "text-black",
     });
   };
@@ -182,13 +158,13 @@ export const CharacterCreator = () => {
     setFlowStep('result');
   };
 
-  console.log('🎭 CharacterCreator render - flowStep:', flowStep, 'currentStepIndex:', currentStepIndex);
+  // console.log('🎭 CharacterCreator render - flowStep:', flowStep, 'currentStepIndex:', currentStepIndex);
 
   if (flowStep === 'story-selection') {
     console.log('📚 Renderizando StorySelectionStep');
     return (
       <StorySelectionStep
-        character={character}
+        character={character} 
         onSelectStory={handleSelectStory}
         onBack={handleBackToResult}
       />
@@ -198,10 +174,7 @@ export const CharacterCreator = () => {
   if (flowStep === 'story-view') {
     console.log('📖 Renderizando StoryWithIllustrations');
     if (!savedCharacterId || !selectedStoryTitle) {
-      console.error("Character ID or Story Title missing for story view. Navigating back to results.");
-      // Optionally, set flowStep back to 'result' or show a more prominent error
-      // For now, just logging and showing a simple error message.
-      // Consider calling handleRestart() or setFlowStep('result') if this state is problematic
+      console.error("Character ID or Story Title missing for story view.");
       return <p>Error: Character ID or selected story title is missing. Cannot display story.</p>;
     }
     return (
@@ -216,13 +189,13 @@ export const CharacterCreator = () => {
     console.log('✅ Renderizando CharacterResult');
     return (
       <CharacterResult
-        character={character}
+        character={character} 
         onRestart={handleRestart}
         onGenerateImage={handleGenerateImage}
         onCreateStory={handleCreateStory}
         isGenerating={isGenerating}
         generatedImageUrl={generatedImageUrl}
-        hasStory={!!selectedStoryTitle}
+        hasStory={!!selectedStoryTitle} 
       />
     );
   }
@@ -231,7 +204,7 @@ export const CharacterCreator = () => {
   return (
     <QuizStep
       step={currentStep}
-      value={character[currentStep.field]}
+      value={character[currentStep.field as keyof Character]} 
       character={character}
       onChange={handleValueChange}
       onNext={handleNext}
