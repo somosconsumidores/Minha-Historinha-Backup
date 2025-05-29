@@ -8,7 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Translation mapping (remains the same)
 const translateToEnglish = {
   'Masculino': 'Male',
   'Feminino': 'Female',
@@ -77,7 +76,7 @@ const validateCharacter = (character: any): { isValid: boolean; errors: string[]
   if (!character.cor_olhos || character.cor_olhos.trim() === '') {
     errors.push('Eye color is required');
   }
-  if (!character.estilo_cabelo || character.estilo_cabelo.trim() === '') {
+  if (!character.estilo_cabelo || character.estilo_cabelo.trim() === '') { 
     errors.push('Hair style is required');
   }
   return { isValid: errors.length === 0, errors };

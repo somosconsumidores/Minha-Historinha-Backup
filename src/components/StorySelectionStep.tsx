@@ -9,14 +9,14 @@ interface StorySelectionStepProps {
   character: Character;
   onSelectStory: (title: string) => void;
   onBack?: () => void;
-  isLoading?: boolean;
+  isLoading?: boolean; //isLoading from parent, e.g. CharacterCreator
 }
 
 export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading = false }: StorySelectionStepProps) => {
   const [storyTitles, setStoryTitles] = useState<StoryTitle[]>([]);
   const [selectedTitle, setSelectedTitle] = useState<string>('');
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
-  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  // const [isGeneratingStory, setIsGeneratingStory] = useState(false); // This component no longer directly generates the story
   const { toast } = useToast();
 
   const generateStoryTitles = async () => {
@@ -29,92 +29,37 @@ export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading
         }
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.titles) {
         setStoryTitles(data.titles);
-        setSelectedTitle(''); // Reset selection
+        setSelectedTitle('');
       }
     } catch (error) {
       console.error('Erro ao gerar títulos:', error);
-      toast({
-        title: "❌ Erro ao gerar títulos",
-        description: "Tente novamente em alguns instantes.",
-        className: "text-black",
-      });
+      toast({ title: "❌ Erro ao gerar títulos", description: "Tente novamente." });
     } finally {
       setIsGeneratingTitles(false);
     }
   };
 
-  const handleSelectStory = async () => {
+  const handleSelectStoryAndProceed = () => {
     if (!selectedTitle) {
-      toast({
-        title: "⚠️ Selecione uma história",
-        description: "Escolha um título antes de continuar.",
-        className: "text-black",
-      });
+      toast({ title: "⚠️ Selecione uma história", description: "Escolha um título." });
       return;
     }
-
-    setIsGeneratingStory(true);
-    toast({
-      title: "📖 Criando sua história...",
-      description: "Gerando 10 capítulos mágicos!",
-      className: "text-black",
-    });
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('Usuário não está logado');
-      }
-
-      console.log('Enviando requisição com token de autenticação');
-      console.log("StorySelectionStep character:", JSON.stringify(character)); // <-- ADDED THIS LINE
-      const { data, error } = await supabase.functions.invoke('generate-story-chapters', {
-        body: {
-          storyTitle: selectedTitle,
-          character: character,
-          characterId: character.id
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-
-      if (error) {
-        console.error('Erro na edge function:', error);
-        throw error;
-      }
-
-      toast({
-        title: "✨ História criada com sucesso!",
-        description: "Sua história de 10 capítulos está pronta!",
-        className: "text-black",
-      });
-
-      onSelectStory(selectedTitle);
-    } catch (error) {
-      console.error('Erro ao gerar história:', error);
-      toast({
-        title: "❌ Erro ao gerar história",
-        description: "Tente novamente em alguns instantes.",
-        className: "text-black",
-      });
-    } finally {
-      setIsGeneratingStory(false);
-    }
+    // This component now just passes the selected title to the parent.
+    // The parent (CharacterCreator) will then transition to StoryWithIllustrations.
+    console.log("StorySelectionStep character (before calling onSelectStory):", JSON.stringify(character));
+    onSelectStory(selectedTitle);
   };
 
   useEffect(() => {
-    if (character.nome && character.sexo) {
+    if (character && character.nome && character.sexo) {
       generateStoryTitles();
     }
-  }, [character.nome, character.sexo]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [character.nome, character.sexo]); // Assuming character name/sex don't change while this step is active
 
   return (
     <div className="story-card rounded-3xl p-8 shadow-2xl max-w-2xl mx-auto animate-fade-in">
@@ -166,16 +111,19 @@ export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading
                   ← Voltar
                 </Button>
               )}
-              <Button onClick={generateStoryTitles} disabled={isGeneratingTitles || isGeneratingStory} variant="outline" className="flex-1 py-3 rounded-2xl font-fredoka font-medium border-2 border-fairy-blue/30 hover:bg-fairy-blue/10">
+              <Button onClick={generateStoryTitles} disabled={isGeneratingTitles || isLoading} variant="outline" className="flex-1 py-3 rounded-2xl font-fredoka font-medium border-2 border-fairy-blue/30 hover:bg-fairy-blue/10">
                 {isGeneratingTitles ? (<><div className="animate-spin mr-2">🔄</div>Gerando...</>) : (<>🔄 Gerar Mais Opções</>)}
               </Button>
             </div>
-            <Button onClick={handleSelectStory} disabled={!selectedTitle || isGeneratingStory || isLoading} className="w-full py-3 rounded-2xl font-fredoka font-medium bg-gradient-to-r from-fairy-purple to-fairy-pink hover:from-fairy-pink hover:to-fairy-purple text-white shadow-lg hover:shadow-xl transition-all duration-300">
-              {isGeneratingStory ? (<><div className="animate-spin mr-2">📖</div>Criando História...</>) : (<>✨ Escolher Esta História</>)}
+            <Button 
+              onClick={handleSelectStoryAndProceed} 
+              disabled={!selectedTitle || isLoading || isGeneratingTitles}
+              className="w-full py-3 rounded-2xl font-fredoka font-medium bg-gradient-to-r from-fairy-purple to-fairy-pink hover:from-fairy-pink hover:to-fairy-purple text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {isLoading ? 'Aguarde...' : '✨ Escolher Esta História'}
             </Button>
           </div>
-        </>
-      )}
+        </>)}
     </div>
   );
 };

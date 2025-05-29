@@ -11,25 +11,23 @@ export const useCharacters = () => {
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // Ensure your Character type (passed as argument) has snake_case properties
-      // so character.cor_pele etc. are defined.
+
       const characterData = {
         user_id: user?.id || null,
         nome: character.nome,
         idade: character.idade,
         sexo: character.sexo,
-        cor_pele: character.cor_pele,          // Uses character.cor_pele
-        cor_cabelo: character.cor_cabelo,      // Uses character.cor_cabelo
-        cor_olhos: character.cor_olhos,        // Uses character.cor_olhos
-        estlio_cabelo: character.estlio_cabelo,  // Uses character.estlio_cabelo
-        // image_url will be set by updateCharacterImage
+        cor_pele: character.cor_pele,
+        cor_cabelo: character.cor_cabelo,
+        cor_olhos: character.cor_olhos,
+        estilo_cabelo: character.estilo_cabelo, // Corrected: 'i'
+        // image_url is handled by updateCharacterImage
       };
 
       const { data, error } = await supabase
         .from('characters')
-        .insert(characterData) // characterData now has correct snake_case keys and values
-        .select('id') // Only select id, or whatever is needed
+        .insert(characterData)
+        .select('id')
         .single();
 
       if (error) {
@@ -40,10 +38,10 @@ export const useCharacters = () => {
       console.log('Personagem salvo no banco:', data);
       return data.id;
     } catch (error: any) {
-      console.error('Erro ao salvar personagem:', error);
+      // Keep the detailed error log here for now
+      console.error('Detailed error saving character:', JSON.stringify(error, null, 2));
       toast({
         title: "❌ Erro ao salvar personagem",
-        // Provide more specific error if possible: error.message
         description: error.message || "Não foi possível salvar o personagem no banco de dados.",
         className: "text-black",
       });
@@ -61,9 +59,7 @@ export const useCharacters = () => {
         .update({ image_url: imageUrl })
         .eq('id', characterId);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       console.log('Imagem do personagem atualizada no banco');
       return true;
@@ -84,19 +80,15 @@ export const useCharacters = () => {
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const { data, error } = await supabase
         .from('characters')
-        .select('*') // Selects all columns, which will be snake_case from DB
+        .select('*')
         .eq('user_id', user?.id || null)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      // Data from DB (char.cor_pele etc.) is mapped to Character type properties.
-      // This assumes your Character type in src/types/Character.ts now uses snake_case.
       const characters: Character[] = data.map(char => ({
         id: char.id,
         user_id: char.user_id,
@@ -106,11 +98,10 @@ export const useCharacters = () => {
         cor_pele: char.cor_pele,
         cor_cabelo: char.cor_cabelo,
         cor_olhos: char.cor_olhos,
-        estlio_cabelo: char.estlio_cabelo,
+        estilo_cabelo: char.estilo_cabelo, // Corrected: 'i'
         image_url: char.image_url,
         created_at: char.created_at,
         updated_at: char.updated_at,
-        // storyTitle is not part of the 'characters' table, it's usually a client-side addition.
       }));
 
       return characters;
