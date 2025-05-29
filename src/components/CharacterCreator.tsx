@@ -4,7 +4,7 @@ import { quizSteps } from '../data/quizSteps';
 import { QuizStep } from './QuizStep';
 import { CharacterResult } from './CharacterResult';
 import { StorySelectionStep } from './StorySelectionStep';
-import { StoryWithIllustrations } from './StoryWithIllustrations'; // Added import
+import { StoryWithIllustrations } from './StoryWithIllustrations';
 import { useToast } from '@/hooks/use-toast';
 import { useCharacters } from '@/hooks/useCharacters';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,10 +18,11 @@ export const CharacterCreator = () => {
     nome: '',
     idade: 0,
     sexo: 'Masculino',
-    corPele: '',
-    corCabelo: '',
-    corOlhos: '',
-    estiloCabelo: ''
+    // Initial state should use snake_case to match Character type and quizSteps
+    cor_pele: '',
+    cor_cabelo: '',
+    cor_olhos: '',
+    estlio_cabelo: ''
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string>('');
@@ -34,47 +35,31 @@ export const CharacterCreator = () => {
 
   const handleNext = async () => {
     console.log('🚀 Próximo step - Índice atual:', currentStepIndex, 'Total steps:', quizSteps.length);
-    
+
     if (currentStepIndex < quizSteps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
       console.log('➡️ Avançando para step:', currentStepIndex + 1);
     } else {
       console.log('🎉 Quiz completo! Salvando personagem...');
-      console.log('👤 Dados do personagem:', character);
-      
+      // Ensure character state here has snake_case fields populated by the quiz
+      console.log('👤 Dados do personagem (antes de salvar):', JSON.stringify(character, null, 2));
+
       try {
-        const characterId = await saveCharacter(character);
-        
+        const characterId = await saveCharacter(character); // saveCharacter needs to handle snake_case if it does transformations
+
         if (characterId) {
           setSavedCharacterId(characterId);
           setCharacter(prev => ({ ...prev, id: characterId }));
           console.log('✅ Personagem salvo com ID:', characterId);
-          
-          toast({
-            title: "🎉 Personagem criado!",
-            description: `${character.nome} está pronto para ganhar vida!`,
-            className: "text-black",
-          });
+          toast({ title: "🎉 Personagem criado!", description: `${character.nome} está pronto!` });
         } else {
           console.log('⚠️ Personagem criado mas sem ID retornado');
-          // Still toast success as character object is formed
-          toast({
-            title: "🎉 Personagem criado!",
-            description: `${character.nome} está pronto para ganhar vida!`,
-            className: "text-black",
-          });
+          toast({ title: "🎉 Personagem criado!", description: `${character.nome} está pronto!` });
         }
-        
-        console.log('🎭 Mudando para flowStep = result');
         setFlowStep('result');
-        
       } catch (error) {
         console.error('❌ Erro ao salvar personagem:', error);
-        toast({
-          title: "❌ Erro ao salvar",
-          description: "Houve um problema ao salvar o personagem. Tente novamente.",
-          className: "text-black",
-        });
+        toast({ title: "❌ Erro ao salvar", description: "Houve um problema ao salvar." });
       }
     }
   };
@@ -87,7 +72,7 @@ export const CharacterCreator = () => {
   };
 
   const handleValueChange = (value: string | number) => {
-    const field = currentStep.field;
+    const field = currentStep.field; // This 'field' comes from quizSteps (e.g., 'cor_pele')
     setCharacter(prev => ({
       ...prev,
       [field]: value
@@ -103,10 +88,10 @@ export const CharacterCreator = () => {
       nome: '',
       idade: 0,
       sexo: 'Masculino',
-      corPele: '',
-      corCabelo: '',
-      corOlhos: '',
-      estiloCabelo: ''
+      cor_pele: '', // snake_case
+      cor_cabelo: '', // snake_case
+      cor_olhos: '', // snake_case
+      estlio_cabelo: '' // snake_case
     });
     setIsGenerating(false);
     setGeneratedImageUrl('');
@@ -116,49 +101,45 @@ export const CharacterCreator = () => {
 
   const handleGenerateImage = async () => {
     setIsGenerating(true);
-    toast({
-      title: "🎨 Gerando imagem...",
-      description: "Criando seu personagem no estilo Pixar 3D!",
-      className: "text-black",
-    });
-    
+    toast({ title: "🎨 Gerando imagem...", description: "Criando seu personagem!" });
+
+    // ADDED CONSOLE.LOG HERE:
+    console.log("Sending this character to generate-character-image:", JSON.stringify(character, null, 2));
+
     try {
       const { data, error } = await supabase.functions.invoke('generate-character-image', {
-        body: { character }
+        body: { character } // This 'character' state object is sent
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.imageUrl) {
         setGeneratedImageUrl(data.imageUrl);
-        
         if (savedCharacterId) {
           await updateCharacterImage(savedCharacterId, data.imageUrl);
         }
-        
-        toast({
-          title: "✨ Imagem gerada com sucesso!",
-          description: "Seu personagem Pixar 3D está pronto!",
-          className: "text-black",
-        });
-        
+        toast({ title: "✨ Imagem gerada!", description: "Personagem pronto!" });
         console.log('Generated image URL:', data.imageUrl);
+      } else {
+        throw new Error("Image URL not returned from function");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating image:', error);
-      toast({
-        title: "❌ Erro ao gerar imagem",
-        description: "Tente novamente em alguns instantes.",
-        className: "text-black",
-      });
+      toast({ title: "❌ Erro ao gerar imagem", description: error.message || "Tente novamente." });
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleCreateStory = () => {
+    if (!savedCharacterId) {
+        toast({title: "Aguarde!", description: "O personagem precisa ser salvo primeiro (geralmente acontece ao final do quiz)."});
+        return;
+    }
+    if (!generatedImageUrl) {
+        toast({title: "Aguarde!", description: "A imagem do personagem precisa ser gerada primeiro."}) ;
+        return;
+    }
     console.log('📚 Iniciando criação de história...');
     setFlowStep('story-selection');
   };
@@ -166,23 +147,22 @@ export const CharacterCreator = () => {
   const handleSelectStory = (storyTitle: string) => {
     console.log('✅ História selecionada:', storyTitle);
     setSelectedStoryTitle(storyTitle);
-    setCharacter(prev => ({ ...prev, storyTitle }));
-    setFlowStep('story-view'); // Changed to 'story-view'
-    
-    // Toast moved to StoryWithIllustrations or similar, as story isn't fully 'created' yet.
+    // Add storyTitle to character object if StoryWithIllustrations needs it there,
+    // but it primarily needs characterId and selectedStoryTitle as props.
+    // setCharacter(prev => ({ ...prev, storyTitle }));
+    setFlowStep('story-view');
   };
 
   const handleBackToResult = () => {
     setFlowStep('result');
   };
 
-  console.log('🎭 CharacterCreator render - flowStep:', flowStep, 'currentStepIndex:', currentStepIndex);
+  // console.log('🎭 CharacterCreator render - flowStep:', flowStep, 'currentStepIndex:', currentStepIndex);
 
   if (flowStep === 'story-selection') {
-    console.log('📚 Renderizando StorySelectionStep');
     return (
       <StorySelectionStep
-        character={character} // Ensure character has ID if needed by StorySelectionStep
+        character={character}
         onSelectStory={handleSelectStory}
         onBack={handleBackToResult}
       />
@@ -190,10 +170,9 @@ export const CharacterCreator = () => {
   }
 
   if (flowStep === 'story-view') {
-    console.log('📖 Renderizando StoryWithIllustrations');
     if (!savedCharacterId || !selectedStoryTitle) {
-      console.error("Character ID or Story Title missing for story view.");
-      return <p>Error: Character ID or selected story title is missing. Cannot display story.</p>;
+      console.error("Character ID ou Título da História ausentes para visualização.");
+      return <p>Erro: ID do personagem ou título da história não selecionado.</p>;
     }
     return (
       <StoryWithIllustrations
@@ -204,25 +183,23 @@ export const CharacterCreator = () => {
   }
 
   if (flowStep === 'result') {
-    console.log('✅ Renderizando CharacterResult');
     return (
       <CharacterResult
-        character={character} // Ensure character has ID if needed by CharacterResult
+        character={character}
         onRestart={handleRestart}
         onGenerateImage={handleGenerateImage}
         onCreateStory={handleCreateStory}
         isGenerating={isGenerating}
         generatedImageUrl={generatedImageUrl}
-        hasStory={!!selectedStoryTitle}
+        hasStory={!!selectedStoryTitle} // Or based on actual story generation state
       />
     );
   }
 
-  console.log('📝 Renderizando QuizStep');
   return (
     <QuizStep
       step={currentStep}
-      value={character[currentStep.field]}
+      value={character[currentStep.field as keyof Character]} // Added 'as keyof Character' for type safety
       character={character}
       onChange={handleValueChange}
       onNext={handleNext}
