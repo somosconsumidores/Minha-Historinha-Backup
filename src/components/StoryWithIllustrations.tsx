@@ -16,7 +16,7 @@ type CharacterDetails = Character & {
   cor_pele?: string;
   cor_cabelo?: string;
   cor_olhos?: string;
-  estilo_cabelo?: string; // Correct 'i'
+  estilo_cabelo?: string;
 };
 
 export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
@@ -26,7 +26,6 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   const { toast } = useToast();
   const { generateStory } = useStories();
 
-  // DEBUG LOGS ADDED HERE:
   console.log("StoryWithIllustrations: generateStory from useStories:", generateStory);
   console.log("StoryWithIllustrations: Type of generateStory.mutateAsync:", typeof generateStory?.mutateAsync);
 
@@ -161,6 +160,8 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
     setStoryId(null);
 
     try {
+      // ADDED DEBUG LOG HERE:
+      console.log("Inside handleGenerateStory, typeof generateStory?.mutateAsync:", typeof generateStory?.mutateAsync);
       console.log("Calling generateStory.mutateAsync with:", { characterId, storyTitle });
       const result = await generateStory.mutateAsync({
         characterId,
@@ -185,7 +186,10 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
       }
     } catch (err: any) {
       console.error('Erro ao gerar história (em handleGenerateStory):', err);
-      toast({ title: '❌ Erro ao Gerar História', description: err.message || "Falha ao gerar capítulos.", variant: 'destructive' });
+      const errorMessage = (err.message && err.message.includes("mutationFn"))
+                           ? err.message
+                           : err.message || "Falha ao gerar capítulos.";
+      toast({ title: '❌ Erro ao Gerar História', description: errorMessage, variant: 'destructive' });
     } finally {
       setIsLoadingStory(false);
     }
@@ -200,7 +204,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   else if (chapters.length > 0) buttonText = '🎨 Gerar Ilustrações Pendentes';
 
   return (
-    // ... JSX remains the same as the last full version I provided ...
+    // JSX is the same as the last full version I provided
     <div className="p-4">
       <button onClick={handleGenerateStory} disabled={mainButtonDisabled} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 mb-4">
         {buttonText}
