@@ -1,9 +1,8 @@
 // src/hooks/useCharacters.ts
-
-import { useState, useCallback }_ from 'react';
-import { Character } from '../types/Character'; // Assuming Character type is defined in src/types/Character.ts
-import { supabase } from '@/integrations/supabase/client'; // Assuming client is configured correctly
-import { useToast }_ from '@/hooks/use-toast'; // Assuming use-toast hook is correctly set up
+import { useState, useCallback } from 'react'; // Corrected import
+import { Character } from '../types/Character';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export const useCharacters = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -14,23 +13,20 @@ export const useCharacters = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Ensure your Character type (passed as argument) has snake_case properties
-      // so character.cor_pele etc. are defined.
       const characterData = {
         user_id: user?.id || null,
         nome: character.nome,
         idade: character.idade,
         sexo: character.sexo,
-        cor_pele: character.cor_pele,          
-        cor_cabelo: character.cor_cabelo,      
-        cor_olhos: character.cor_olhos,        
-        estilo_cabelo: character.estilo_cabelo, // Corrected: 'i' instead of 'l'
-        // image_url is handled by updateCharacterImage
+        cor_pele: character.cor_pele,
+        cor_cabelo: character.cor_cabelo,
+        cor_olhos: character.cor_olhos,
+        estilo_cabelo: character.estilo_cabelo, // Ensures 'estilo_cabelo'
       };
 
       const { data, error } = await supabase
         .from('characters')
-        .insert(characterData) 
+        .insert(characterData)
         .select('id') 
         .single();
 
@@ -105,7 +101,7 @@ export const useCharacters = () => {
         cor_pele: char.cor_pele,
         cor_cabelo: char.cor_cabelo,
         cor_olhos: char.cor_olhos,
-        estilo_cabelo: char.estilo_cabelo, // Corrected: 'i'
+        estilo_cabelo: char.estilo_cabelo, // Ensures 'estilo_cabelo'
         image_url: char.image_url,
         created_at: char.created_at,
         updated_at: char.updated_at,
