@@ -11,15 +11,14 @@ interface StoryWithIllustrationsProps {
   storyTitle: string;
 }
 
-// This type should align with the actual fields fetched and used.
-// Your base 'Character' type should ideally be updated to snake_case.	ype CharacterDetails = Character & {
+/// This type should align with the actual fields fetched and used.
+// Your base 'Character' type should ideally be updated to snake_case.
+type CharacterDetails = Character & {
   image_url: string;
-  // Explicitly listing snake_case properties expected from the select query
-  // This helps if 'Character' type is more generic or has camelCase.
   cor_pele?: string;
   cor_cabelo?: string;
   cor_olhos?: string;
-  estilo_cabelo?: string; // Corrected to 'estilo_cabelo'
+  estilo_cabelo?: string; // Correct 'i'
 };
 
 export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
