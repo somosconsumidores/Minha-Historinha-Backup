@@ -1,71 +1,51 @@
 // supabase/functions/generate-story-chapters/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders } from "../_shared/cors.ts"; // Assuming this path is correct
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Log the raw body first
     const rawBody = await req.json();
-    console.log('Raw request body:', JSON.stringify(rawBody));
+    console.log('Raw request body for generate-story-chapters:', JSON.stringify(rawBody));
 
-    // 1️⃣ Extrai apenas o que vem do cliente
     const { storyTitle, character, characterId } = rawBody;
 
-    // 2️⃣ Validações básicas
     if (!storyTitle || !character || !characterId) {
-      console.log('Missing required parameters (after attempting to read from rawBody):', { storyTitle, character, characterId });
-      return new Response(
-        JSON.stringify({
-          error: 'Missing required parameters: storyTitle, character, characterId',
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      console.log('Missing required parameters:', { storyTitle, character, characterId });
+      return new Response(JSON.stringify({ error: 'Missing required parameters: storyTitle, character, characterId' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (!character.nome || !character.idade || !character.sexo || !character.cor_pele || !character.cor_cabelo || !character.cor_olhos || !character.estilo_cabelo) {
+        console.log('Missing required fields within character object:', character);
+        return new Response( JSON.stringify({ error: 'Missing required fields within character object for prompt generation.'}), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY não configurada')
-    }
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) throw new Error('OPENAI_API_KEY não configurada');
 
-    // 3️⃣ Cria o cliente Supabase (service role)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 4️⃣ Gera a URL pública da imagem no Storage
-    const { data: urlData, error: urlError } = supabase
-      .storage
-      .from('character-images')
-      .getPublicUrl(`${characterId}.png`)
+    const { data: urlData, error: urlError } = supabase.storage.from('character-images').getPublicUrl(`${characterId}.png`);
     if (urlError) {
-      console.error('Erro ao obter URL de imagem:', urlError)
-      throw new Error('Não foi possível obter a URL da imagem do personagem')
+      console.error('Erro ao obter URL de imagem do personagem:', urlError);
+      throw new Error('Não foi possível obter a URL da imagem do personagem');
     }
-    const characterImageUrl = urlData.publicUrl
-    console.log(`Image URL: ${characterImageUrl}`)
+    const characterMainImageUrl = urlData.publicUrl;
+    console.log(`Character Main Image URL: ${characterMainImageUrl}`);
 
-    // 5️⃣ Monta o prompt incluindo essa URL
     const prompt = `Crie uma história infantil completa dividida em exatamente 10 capítulos curtos baseada no título: "${storyTitle}"
 
 Personagem principal:
 - Nome: ${character.nome}
 - Idade: ${character.idade} anos
 - Sexo: ${character.sexo}
-- Aparência: Pele ${character.corPele}, cabelo ${character.corCabelo}, olhos ${character.corOlhos}
-- Referência de imagem do personagem: ${characterImageUrl}
+- Aparência: Pele ${character.cor_pele}, cabelo ${character.cor_cabelo}, olhos ${character.cor_olhos}, estilo ${character.estilo_cabelo}
+- Referência de imagem do personagem: ${characterMainImageUrl}
 
 Cada capítulo deve:
 - Ter entre 100-150 palavras
@@ -80,110 +60,52 @@ Retorne APENAS um JSON válido no formato:
     "Texto completo do capítulo 1...",
     // ... até o capítulo 10
   ]
-}`
+}`;
 
-    // 6️⃣ Chama o OpenAI
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Authorization': `Bearer ${openAIApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um contador de histórias especializado em literatura infantil educativa e envolvente.',
-          },
-          { role: 'user', content: prompt },
-        ],
+        messages: [{ role: 'system', content: 'Você é um contador de histórias especializado em literatura infantil educativa e envolvente.' },{ role: 'user', content: prompt }],
         max_tokens: 3000,
         temperature: 0.7,
       }),
-    })
+    });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`)
+      const errorBody = await response.text();
+      console.error("OpenAI API error response:", errorBody);
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}. Details: ${errorBody}`);
     }
-    const data = await response.json()
-    const content = data.choices[0].message.content
+    const responseData = await response.json();
+    const content = responseData.choices[0].message.content;
 
-    // 7️⃣ Parse e validação do JSON retornado
-    let chapters: string[]
+    let chapters: string[];
     try {
-      const parsed = JSON.parse(content)
-      chapters = parsed.chapters
+      const parsed = JSON.parse(content);
+      chapters = parsed.chapters;
       if (!Array.isArray(chapters) || chapters.length !== 10) {
-        throw new Error('Formato de chapters inválido')
+        throw new Error('Formato de chapters inválido ou não contém 10 capítulos.');
       }
     } catch (parseError) {
-      console.error('Erro ao fazer parse dos capítulos:', parseError)
-      throw new Error('Formato de resposta inválido da IA')
+      console.error('Erro ao fazer parse dos capítulos:', parseError, "Content received:", content);
+      throw new Error('Formato de resposta inválido da IA para os capítulos.');
     }
 
-    // 8️⃣ Autenticação do usuário
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      console.error('Token de autorização não fornecido')
-      throw new Error('Usuário não autenticado')
-    }
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
-    if (userError || !user) {
-      console.error('Erro de autenticação ou usuário não encontrado:', userError)
-      throw new Error('Usuário não autenticado')
-    }
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new Error('Usuário não autenticado, não é possível salvar a história.');
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) throw new Error('Usuário não autenticado ou token inválido, não é possível salvar a história.');
 
-    // 9️⃣ Persiste no banco
-    const { data: storyData, error: storyError } = await supabase
-      .from('generated_stories')
-      .insert({
-        title: storyTitle,
-        character_id: characterId,
-        user_id: user.id,
-        chapter_1: chapters[0],
-        chapter_2: chapters[1],
-        chapter_3: chapters[2],
-        chapter_4: chapters[3],
-        chapter_5: chapters[4],
-        chapter_6: chapters[5],
-        chapter_7: chapters[6],
-        chapter_8: chapters[7],
-        chapter_9: chapters[8],
-        chapter_10: chapters[9],
-      })
-      .select()
-      .single()
-    if (storyError) {
-      console.error('Erro ao salvar história:', storyError)
-      throw new Error('Erro ao salvar história no banco de dados')
-    }
+    const storyRecord = { title: storyTitle, character_id: characterId, user_id: user.id, chapter_1: chapters[0], chapter_2: chapters[1], chapter_3: chapters[2], chapter_4: chapters[3], chapter_5: chapters[4], chapter_6: chapters[5], chapter_7: chapters[6], chapter_8: chapters[7], chapter_9: chapters[8], chapter_10: chapters[9] };
+    const { data: savedStoryData, error: storyError } = await supabase.from('generated_stories').insert(storyRecord).select('id').single();
+    if (storyError) throw new Error('Erro ao salvar história no banco de dados. Detalhes: ' + storyError.message);
 
-    // 1️⃣0️⃣ Retorna sucesso
-    return new Response(
-      JSON.stringify({
-        chapters,
-        storyId: storyData.id,
-        message: 'História gerada e salva com sucesso!',
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
-
-  } catch (error) {
-    console.error('Erro ao gerar capítulos:', error)
-    return new Response(
-      JSON.stringify({
-        error: 'Erro ao gerar capítulos da história',
-        details: (error as Error).message,
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
+    return new Response(JSON.stringify({ chapters, storyId: savedStoryData.id, message: 'História gerada e salva com sucesso!' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  } catch (error: any) {
+    console.error('Erro fatal em generate-story-chapters:', error.message, error.stack);
+    return new Response(JSON.stringify({ error: 'Erro ao gerar capítulos da história', details: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
-})
+});

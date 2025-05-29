@@ -18,11 +18,10 @@ export const CharacterCreator = () => {
     nome: '',
     idade: 0,
     sexo: 'Masculino',
-    // Initial state should use snake_case to match Character type and quizSteps
-    cor_pele: '',
-    cor_cabelo: '',
-    cor_olhos: '',
-    estlio_cabelo: ''
+    cor_pele: '',       // Corrected to snake_case
+    cor_cabelo: '',     // Corrected to snake_case
+    cor_olhos: '',      // Corrected to snake_case
+    estilo_cabelo: ''   // Corrected to snake_case with 'i'
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string>('');
@@ -41,11 +40,10 @@ export const CharacterCreator = () => {
       console.log('➡️ Avançando para step:', currentStepIndex + 1);
     } else {
       console.log('🎉 Quiz completo! Salvando personagem...');
-      // Ensure character state here has snake_case fields populated by the quiz
-      console.log('👤 Dados do personagem (antes de salvar):', JSON.stringify(character, null, 2));
+      console.log('👤 Dados do personagem (antes de salvar):', JSON.stringify(character, null, 2)); 
 
       try {
-        const characterId = await saveCharacter(character); // saveCharacter needs to handle snake_case if it does transformations
+        const characterId = await saveCharacter(character); 
 
         if (characterId) {
           setSavedCharacterId(characterId);
@@ -59,7 +57,7 @@ export const CharacterCreator = () => {
         setFlowStep('result');
       } catch (error) {
         console.error('❌ Erro ao salvar personagem:', error);
-        toast({ title: "❌ Erro ao salvar", description: "Houve um problema ao salvar." });
+        toast({ title: "❌ Erro ao salvar", description: (error as Error).message || "Houve um problema ao salvar." });
       }
     }
   };
@@ -72,7 +70,7 @@ export const CharacterCreator = () => {
   };
 
   const handleValueChange = (value: string | number) => {
-    const field = currentStep.field; // This 'field' comes from quizSteps (e.g., 'cor_pele')
+    const field = currentStep.field; 
     setCharacter(prev => ({
       ...prev,
       [field]: value
@@ -88,10 +86,10 @@ export const CharacterCreator = () => {
       nome: '',
       idade: 0,
       sexo: 'Masculino',
-      cor_pele: '', // snake_case
-      cor_cabelo: '', // snake_case
-      cor_olhos: '', // snake_case
-      estlio_cabelo: '' // snake_case
+      cor_pele: '',
+      cor_cabelo: '',
+      cor_olhos: '',
+      estilo_cabelo: ''
     });
     setIsGenerating(false);
     setGeneratedImageUrl('');
@@ -102,13 +100,12 @@ export const CharacterCreator = () => {
   const handleGenerateImage = async () => {
     setIsGenerating(true);
     toast({ title: "🎨 Gerando imagem...", description: "Criando seu personagem!" });
-
-    // ADDED CONSOLE.LOG HERE:
+    
     console.log("Sending this character to generate-character-image:", JSON.stringify(character, null, 2));
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-character-image', {
-        body: { character } // This 'character' state object is sent
+        body: { character } 
       });
 
       if (error) throw error;
@@ -147,10 +144,14 @@ export const CharacterCreator = () => {
   const handleSelectStory = (storyTitle: string) => {
     console.log('✅ História selecionada:', storyTitle);
     setSelectedStoryTitle(storyTitle);
-    // Add storyTitle to character object if StoryWithIllustrations needs it there,
-    // but it primarily needs characterId and selectedStoryTitle as props.
-    // setCharacter(prev => ({ ...prev, storyTitle }));
+    setCharacter(prev => ({ ...prev, storyTitle }));
     setFlowStep('story-view');
+    
+    toast({
+      title: "📖 História Pronta para Visualizar!",
+      description: `Preparando para ver "${storyTitle}" com ${character.nome}!`, 
+      className: "text-black",
+    });
   };
 
   const handleBackToResult = () => {
@@ -160,9 +161,10 @@ export const CharacterCreator = () => {
   // console.log('🎭 CharacterCreator render - flowStep:', flowStep, 'currentStepIndex:', currentStepIndex);
 
   if (flowStep === 'story-selection') {
+    console.log('📚 Renderizando StorySelectionStep');
     return (
       <StorySelectionStep
-        character={character}
+        character={character} 
         onSelectStory={handleSelectStory}
         onBack={handleBackToResult}
       />
@@ -170,9 +172,10 @@ export const CharacterCreator = () => {
   }
 
   if (flowStep === 'story-view') {
+    console.log('📖 Renderizando StoryWithIllustrations');
     if (!savedCharacterId || !selectedStoryTitle) {
-      console.error("Character ID ou Título da História ausentes para visualização.");
-      return <p>Erro: ID do personagem ou título da história não selecionado.</p>;
+      console.error("Character ID or Story Title missing for story view.");
+      return <p>Error: Character ID or selected story title is missing. Cannot display story.</p>;
     }
     return (
       <StoryWithIllustrations
@@ -183,23 +186,25 @@ export const CharacterCreator = () => {
   }
 
   if (flowStep === 'result') {
+    console.log('✅ Renderizando CharacterResult');
     return (
       <CharacterResult
-        character={character}
+        character={character} 
         onRestart={handleRestart}
         onGenerateImage={handleGenerateImage}
         onCreateStory={handleCreateStory}
         isGenerating={isGenerating}
         generatedImageUrl={generatedImageUrl}
-        hasStory={!!selectedStoryTitle} // Or based on actual story generation state
+        hasStory={!!selectedStoryTitle} 
       />
     );
   }
 
+  console.log('📝 Renderizando QuizStep');
   return (
     <QuizStep
       step={currentStep}
-      value={character[currentStep.field as keyof Character]} // Added 'as keyof Character' for type safety
+      value={character[currentStep.field as keyof Character]} 
       character={character}
       onChange={handleValueChange}
       onNext={handleNext}
