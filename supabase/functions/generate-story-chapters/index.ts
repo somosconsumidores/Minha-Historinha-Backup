@@ -14,12 +14,16 @@ serve(async (req) => {
   }
 
   try {
+    // Log the raw body first
+    const rawBody = await req.json();
+    console.log('Raw request body:', JSON.stringify(rawBody));
+
     // 1️⃣ Extrai apenas o que vem do cliente
-    const { storyTitle, character, characterId } = await req.json()
+    const { storyTitle, character, characterId } = rawBody;
 
     // 2️⃣ Validações básicas
     if (!storyTitle || !character || !characterId) {
-      console.log('Missing required parameters:', { storyTitle, character, characterId })
+      console.log('Missing required parameters (after attempting to read from rawBody):', { storyTitle, character, characterId });
       return new Response(
         JSON.stringify({
           error: 'Missing required parameters: storyTitle, character, characterId',
@@ -156,7 +160,7 @@ Retorne APENAS um JSON válido no formato:
       throw new Error('Erro ao salvar história no banco de dados')
     }
 
-    // 10️⃣ Retorna sucesso
+    // 1️⃣0️⃣ Retorna sucesso
     return new Response(
       JSON.stringify({
         chapters,
