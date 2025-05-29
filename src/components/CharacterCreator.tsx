@@ -1,15 +1,15 @@
-
 import { useState } from 'react';
 import { Character } from '../types/Character';
 import { quizSteps } from '../data/quizSteps';
 import { QuizStep } from './QuizStep';
 import { CharacterResult } from './CharacterResult';
 import { StorySelectionStep } from './StorySelectionStep';
+import { StoryWithIllustrations } from './StoryWithIllustrations'; // Added import
 import { useToast } from '@/hooks/use-toast';
 import { useCharacters } from '@/hooks/useCharacters';
 import { supabase } from '@/integrations/supabase/client';
 
-type FlowStep = 'quiz' | 'result' | 'story-selection';
+type FlowStep = 'quiz' | 'result' | 'story-selection' | 'story-view';
 
 export const CharacterCreator = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -39,7 +39,6 @@ export const CharacterCreator = () => {
       setCurrentStepIndex(currentStepIndex + 1);
       console.log('➡️ Avançando para step:', currentStepIndex + 1);
     } else {
-      // Quiz completed - save character to database
       console.log('🎉 Quiz completo! Salvando personagem...');
       console.log('👤 Dados do personagem:', character);
       
@@ -58,6 +57,7 @@ export const CharacterCreator = () => {
           });
         } else {
           console.log('⚠️ Personagem criado mas sem ID retornado');
+          // Still toast success as character object is formed
           toast({
             title: "🎉 Personagem criado!",
             description: `${character.nome} está pronto para ganhar vida!`,
@@ -167,15 +167,9 @@ export const CharacterCreator = () => {
     console.log('✅ História selecionada:', storyTitle);
     setSelectedStoryTitle(storyTitle);
     setCharacter(prev => ({ ...prev, storyTitle }));
-    // Aqui podemos adicionar lógica para navegar para a visualização da história
-    // Por enquanto, voltamos para o resultado do personagem
-    setFlowStep('result');
+    setFlowStep('story-view'); // Changed to 'story-view'
     
-    toast({
-      title: "📖 História criada!",
-      description: `"${storyTitle}" foi criada para ${character.nome}!`,
-      className: "text-black",
-    });
+    // Toast moved to StoryWithIllustrations or similar, as story isn't fully 'created' yet.
   };
 
   const handleBackToResult = () => {
@@ -188,9 +182,23 @@ export const CharacterCreator = () => {
     console.log('📚 Renderizando StorySelectionStep');
     return (
       <StorySelectionStep
-        character={character}
+        character={character} // Ensure character has ID if needed by StorySelectionStep
         onSelectStory={handleSelectStory}
         onBack={handleBackToResult}
+      />
+    );
+  }
+
+  if (flowStep === 'story-view') {
+    console.log('📖 Renderizando StoryWithIllustrations');
+    if (!savedCharacterId || !selectedStoryTitle) {
+      console.error("Character ID or Story Title missing for story view.");
+      return <p>Error: Character ID or selected story title is missing. Cannot display story.</p>;
+    }
+    return (
+      <StoryWithIllustrations
+        characterId={savedCharacterId}
+        storyTitle={selectedStoryTitle}
       />
     );
   }
@@ -199,7 +207,7 @@ export const CharacterCreator = () => {
     console.log('✅ Renderizando CharacterResult');
     return (
       <CharacterResult
-        character={character}
+        character={character} // Ensure character has ID if needed by CharacterResult
         onRestart={handleRestart}
         onGenerateImage={handleGenerateImage}
         onCreateStory={handleCreateStory}
