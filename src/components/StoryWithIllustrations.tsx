@@ -4,15 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useStories } from '@/hooks/useStories';
-import { Character } from '@/types/Character';
+import { Character } from '@/types/Character'; // Assuming Character type includes snake_case fields
 
 interface StoryWithIllustrationsProps {
   characterId: string;
   storyTitle: string;
 }
 
-/// This type should align with the actual fields fetched and used.
-// Your base 'Character' type should ideally be updated to snake_case.
 type CharacterDetails = Character & {
   image_url: string;
   cor_pele?: string;
@@ -28,6 +26,10 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   const { toast } = useToast();
   const { generateStory } = useStories();
 
+  // DEBUG LOGS ADDED HERE:
+  console.log("StoryWithIllustrations: generateStory from useStories:", generateStory);
+  console.log("StoryWithIllustrations: Type of generateStory.mutateAsync:", typeof generateStory?.mutateAsync);
+
   const [chapters, setChapters] = useState<string[]>([]);
   const [chapterIllustrations, setChapterIllustrations] = useState<Record<number, string>>({});
   const [storyId, setStoryId] = useState<string | null>(null);
@@ -37,24 +39,36 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   const [isLoadingIllustrations, setIsLoadingIllustrations] = useState(false);
 
   useEffect(() => {
-    if (!characterId) return;
+    if (!characterId) {
+      setCharacterDetails(null);
+      return;
+    }
 
     const fetchCharacterDetails = async () => {
       setIsLoadingCharacter(true);
+      console.log(`Fetching character details for ID: ${characterId}`);
       try {
         const { data, error } = await supabase
           .from('characters')
-          .select('id, nome, image_url, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo') // Corrected: estilo_cabelo
+          .select('id, nome, image_url, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo')
           .eq('id', characterId)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching character details:', error);
+          throw error;
+        }
         if (data) {
+          console.log('Character details fetched:', data);
           setCharacterDetails(data as CharacterDetails);
+        } else {
+          console.warn('No character data found for ID:', characterId);
+          setCharacterDetails(null);
+          toast({ title: 'Aviso', description: 'Detalhes do personagem não encontrados.' });
         }
       } catch (err: any) {
-        console.error('Erro ao buscar detalhes do personagem:', err);
-        toast({ title: 'Erro Detalhes Personagem', description: 'Não foi possível carregar os detalhes do personagem.' });
+        console.error('Exception in fetchCharacterDetails:', err);
+        toast({ title: 'Erro Detalhes Personagem', description: err.message || 'Não foi possível carregar os detalhes do personagem.' });
         setCharacterDetails(null);
       } finally {
         setIsLoadingCharacter(false);
@@ -67,10 +81,10 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   const handleGenerateAllChapterIllustrations = async (
     storyIdParam: string,
     chaptersParam: string[],
-    charDetailsParam: CharacterDetails | null // Allow null check
+    charDetailsParam: CharacterDetails | null
   ) => {
     if (!storyIdParam || !chaptersParam.length || !charDetailsParam) {
-      console.error('Missing data for illustration generation:', { storyIdParam, chaptersParam, charDetailsParam });
+      console.error('handleGenerateAllChapterIllustrations: Missing data.', { storyIdParam, chaptersLength: chaptersParam.length, charDetailsParam });
       toast({ title: 'Erro Interno', description: 'Dados insuficientes para gerar ilustrações.' });
       setIsLoadingIllustrations(false);
       return;
@@ -78,11 +92,12 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
 
     setIsLoadingIllustrations(true);
     toast({ title: '🎨 Iniciando Ilustrações', description: `Preparando ${chaptersParam.length} ilustrações.` });
+    console.log('Starting illustration generation for all chapters.');
 
     const appearanceParts = [];
     if (charDetailsParam.cor_pele) appearanceParts.push(`Pele ${charDetailsParam.cor_pele}`);
     if (charDetailsParam.cor_cabelo) appearanceParts.push(`cabelo ${charDetailsParam.cor_cabelo}`);
-    if (charDetailsParam.estilo_cabelo) appearanceParts.push(charDetailsParam.estilo_cabelo); // Corrected: estilo_cabelo
+    if (charDetailsParam.estilo_cabelo) appearanceParts.push(charDetailsParam.estilo_cabelo);
     if (charDetailsParam.cor_olhos) appearanceParts.push(`olhos ${charDetailsParam.cor_olhos}`);
     if (charDetailsParam.sexo) appearanceParts.push(charDetailsParam.sexo);
     if (charDetailsParam.idade) appearanceParts.push(`${charDetailsParam.idade} anos`);
@@ -103,7 +118,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
         console.log(`Gerando ilustração para cap. ${chapterIndex} da história ${storyIdParam}`);
         toast({ title: `🖼️ Ilustrando Cap. ${chapterIndex + 1}/${chaptersParam.length}` });
 
-        const { data, error } = await supabase.functions.invoke('generate-chapter-illustration', {
+        const { data: illusData, error: illusError } = await supabase.functions.invoke('generate-chapter-illustration', {
           body: {
             chapterText,
             characterImageUrl: charDetailsParam.image_url,
@@ -114,14 +129,14 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
           },
         });
 
-        if (error) {
-          console.error(`Falha ao gerar ilustração para cap. ${chapterIndex}:`, error);
-          toast({ title: `❌ Erro Cap. ${chapterIndex + 1}`, description: error.message || "Tente novamente.", variant: 'destructive' });
-        } else if (data && data.illustrationUrl) {
-          setChapterIllustrations(prev => ({ ...prev, [chapterIndex]: data.illustrationUrl }));
+        if (illusError) {
+          console.error(`Falha ao gerar ilustração para cap. ${chapterIndex}:`, illusError);
+          toast({ title: `❌ Erro Cap. ${chapterIndex + 1}`, description: (illusError as Error).message || "Tente novamente.", variant: 'destructive' });
+        } else if (illusData && illusData.illustrationUrl) {
+          setChapterIllustrations(prev => ({ ...prev, [chapterIndex]: illusData.illustrationUrl }));
           toast({ title: `✅ Ilustração Cap. ${chapterIndex + 1} Pronta!` });
         } else {
-          console.error(`URL da ilustração não retornada para cap. ${chapterIndex}:`, data);
+          console.error(`URL da ilustração não retornada para cap. ${chapterIndex}:`, illusData);
           toast({ title: `⚠️ Cap. ${chapterIndex + 1} Incompleto`, description: 'Não foi possível obter a URL.' });
         }
       }
@@ -135,8 +150,9 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   };
 
   const handleGenerateStory = async () => {
+    console.log("handleGenerateStory called. CharacterDetails:", characterDetails);
     if (!characterDetails) {
-      toast({ title: 'Aguarde', description: 'Detalhes do personagem ainda carregando.' });
+      toast({ title: 'Aguarde', description: 'Detalhes do personagem ainda carregando ou não encontrados.' });
       return;
     }
     setIsLoadingStory(true);
@@ -145,28 +161,30 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
     setStoryId(null);
 
     try {
+      console.log("Calling generateStory.mutateAsync with:", { characterId, storyTitle });
       const result = await generateStory.mutateAsync({
         characterId,
         storyTitle,
       });
+      console.log("Result from generateStory.mutateAsync:", result);
 
       if (result && result.chapters && result.storyId) {
         setChapters(result.chapters);
         setStoryId(result.storyId);
         toast({ title: '✅ História Gerada!', description: 'Iniciando geração de ilustrações...' });
-        // Ensure characterDetails is not null before calling
-        if (characterDetails) { // Redundant check, already checked at the start of function
+
+        if (characterDetails) {
             await handleGenerateAllChapterIllustrations(result.storyId, result.chapters, characterDetails);
         } else {
-            // This case should ideally not be reached if the initial check is done.
+            console.error("CharacterDetails became null before starting illustration generation.");
             toast({ title: 'Atenção', description: 'Detalhes do personagem não disponíveis para iniciar ilustrações.'});
         }
       } else {
-        console.error('generateStory não retornou a estrutura esperada:', result);
+        console.error('generateStory não retornou a estrutura esperada ({ chapters, storyId }):', result);
         toast({ title: 'Erro Inesperado', description: 'Geração da história falhou em retornar dados válidos.' });
       }
     } catch (err: any) {
-      console.error('Erro ao gerar história:', err);
+      console.error('Erro ao gerar história (em handleGenerateStory):', err);
       toast({ title: '❌ Erro ao Gerar História', description: err.message || "Falha ao gerar capítulos.", variant: 'destructive' });
     } finally {
       setIsLoadingStory(false);
@@ -178,10 +196,11 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   if (isLoadingCharacter) buttonText = '🔍 Carregando Personagem...';
   else if (isLoadingStory) buttonText = '📖 Gerando História...';
   else if (isLoadingIllustrations) buttonText = '🎨 Gerando Ilustrações...';
-  else if (chapters.length > 0 && Object.keys(chapterIllustrations).length === chapters.length) buttonText = '✅ Tudo Pronto!';
-  else if (chapters.length > 0) buttonText = '🎨 Gerar Ilustrações Pendentes'; // Or specific text
+  else if (chapters.length > 0 && Object.keys(chapterIllustrations).length === chapters.length && chapters.length > 0) buttonText = '✅ Tudo Pronto!';
+  else if (chapters.length > 0) buttonText = '🎨 Gerar Ilustrações Pendentes';
 
   return (
+    // ... JSX remains the same as the last full version I provided ...
     <div className="p-4">
       <button onClick={handleGenerateStory} disabled={mainButtonDisabled} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 mb-4">
         {buttonText}
