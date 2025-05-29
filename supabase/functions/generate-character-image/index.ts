@@ -59,14 +59,27 @@ const translateText = (text: string): string => {
 
 const validateCharacter = (character: any): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
-  if (!character.nome || character.nome.trim() === '') errors.push('Character name is required');
-  if (!character.idade || character.idade < 1 || character.idade > 100) errors.push('Valid age is required (1-100)');
-  if (!character.sexo) errors.push('Gender is required');
-  // Updated to snake_case
-  if (!character.cor_pele || character.cor_pele.trim() === '') errors.push('Skin color is required');
-  if (!character.cor_cabelo || character.cor_cabelo.trim() === '') errors.push('Hair color is required');
-  if (!character.cor_olhos || character.cor_olhos.trim() === '') errors.push('Eye color is required');
-  if (!character.estlio_cabelo || character.estlio_cabelo.trim() === '') errors.push('Hair style is required'); // Matching your DB: estlio_cabelo
+  if (!character.nome || character.nome.trim() === '') {
+    errors.push('Character name is required');
+  }
+  if (!character.idade || character.idade < 1 || character.idade > 100) {
+    errors.push('Valid age is required (1-100)');
+  }
+  if (!character.sexo) {
+    errors.push('Gender is required');
+  }
+  if (!character.cor_pele || character.cor_pele.trim() === '') {
+    errors.push('Skin color is required');
+  }
+  if (!character.cor_cabelo || character.cor_cabelo.trim() === '') {
+    errors.push('Hair color is required');
+  }
+  if (!character.cor_olhos || character.cor_olhos.trim() === '') {
+    errors.push('Eye color is required');
+  }
+  if (!character.estilo_cabelo || character.estilo_cabelo.trim() === '') {
+    errors.push('Hair style is required');
+  }
   return { isValid: errors.length === 0, errors };
 };
 
@@ -76,12 +89,15 @@ serve(async (req) => {
   }
 
   try {
-    const { character } = await req.json();
+    const rawBody = await req.json();
+    console.log('Raw request body for generate-character-image:', JSON.stringify(rawBody, null, 2));
+    const { character } = rawBody;
+
     if (!character) {
       return new Response(JSON.stringify({ error: 'Character data is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    console.log('Received character data for image generation:', JSON.stringify(character, null, 2));
+    console.log('Character object after destructuring for image generation:', JSON.stringify(character, null, 2));
 
     const validation = validateCharacter(character);
     if (!validation.isValid) {
@@ -89,12 +105,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Invalid character data', details: validation.errors }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Updated to snake_case for accessing properties
     const translatedGender = translateText(character.sexo);
     const translatedSkinColor = translateText(character.cor_pele);
     const translatedHairColor = translateText(character.cor_cabelo);
     const translatedEyeColor = translateText(character.cor_olhos);
-    const translatedHairStyle = translateText(character.estlio_cabelo); // Matching your DB: estlio_cabelo
+    const translatedHairStyle = translateText(character.estilo_cabelo);
 
     const prompt = `Create a character in the style Pixar/Disney 3D based EXACTLY on this physical description : name ${character.nome}, ${character.idade} years old, ${translatedGender}, with ${translatedSkinColor}, ${translatedHairColor} hair in ${translatedHairStyle} style, and ${translatedEyeColor} eyes, front view only.Never ask feedback about the choice of the image.`;
     console.log('Generated English prompt:', prompt);
