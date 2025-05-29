@@ -21,7 +21,8 @@ type GenerateChaptersInput = {
 
 // Result type expected by StoryWithIllustrations.tsx from this hook's mutation
 // This should match what generate-story-chapters edge function effectively returns
-// (chapters and storyId are key)	ype GenerateStoryHookResult = {
+// (chapters and storyId are key)
+type GenerateStoryHookResult = {
   chapters: string[];
   storyId: string;
   message?: string; // Optional message from the edge function
