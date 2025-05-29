@@ -13,17 +13,23 @@ export interface Story {
   created_at: string;
 }
 
+// Input type for the generateStory mutation
 type GenerateChaptersInput = {
   characterId: string;
   storyTitle: string;
 };
 
-type GenerateChaptersResult = {
+// Result type expected by StoryWithIllustrations.tsx from this hook's mutation
+// This should match what generate-story-chapters edge function effectively returns
+// (chapters and storyId are key)	ype GenerateStoryHookResult = {
   chapters: string[];
-  illustrations: string[];
+  storyId: string;
+  message?: string; // Optional message from the edge function
 };
 
 export const useStories = () => {
+  // General loading state for this hook, can be used by other components
+  // StoryWithIllustrations.tsx has its own more granular loading states now.
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -62,35 +68,69 @@ export const useStories = () => {
     }
   };
 
-  const generateStory = useMutation<GenerateChaptersResult, Error, GenerateChaptersInput>(
+  const generateStory = useMutation<GenerateStoryHookResult, Error, GenerateChaptersInput>(
     async ({ characterId, storyTitle }) => {
-      setIsLoading(true);
+      // setIsLoading(true); // useMutation handles its own loading state via result.isLoading
       try {
-        const { data: charData, error: charError } = await supabase.from('characters').select('nome, idade, sexo, corPele, corCabelo, corOlhos').eq('id', characterId).single();
+        // This part fetches character details again. 
+        // StoryWithIllustrations.tsx also fetches character details.
+        // Consider if this duplication is necessary or if character details can be passed to this mutateAsync function.
+        // For now, keeping it as it was, but be mindful of potential redundant fetches.
+        const { data: charData, error: charError } = await supabase
+          .from('characters')
+          .select('nome, idade, sexo, corPele, corCabelo, corOlhos') // Ensure this select is sufficient for the edge function
+          .eq('id', characterId)
+          .single();
+        
         if (charError || !charData) {
-          throw new Error(charError?.message || 'Personagem não encontrado');
+          throw new Error(charError?.message || 'Personagem não encontrado em useStories.');
         }
-        console.log("useStories charData:", JSON.stringify(charData)); // <-- ADDED THIS LINE
+
+        // The console.log for charData can be removed if not needed for debugging this hook specifically
+        // console.log("useStories charData:", JSON.stringify(charData)); 
+
         const res = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/generate-story-chapters`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+          headers: { 
+            'Content-Type': 'application/json',
+            // Pass the user's auth token for RLS in the edge function if needed for user-specific logic beyond just identifying the user
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, // Usually for public client-side calls
+          },
           body: JSON.stringify({ storyTitle, characterId, character: charData })
         });
+
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.details || `Erro ${res.status}`);
+          const err = await res.json().catch(() => ({ error: 'Request failed with status ' + res.status }));
+          throw new Error(err.details || err.error || `Erro ${res.status}`);
         }
-        return (await res.json()) as GenerateChaptersResult;
-      } finally {
-        setIsLoading(false);
+
+        const responseData = await res.json();
+        if (!responseData.chapters || !responseData.storyId) {
+          console.error('Invalid response from generate-story-chapters:', responseData);
+          throw new Error('Resposta inválida da função de gerar capítulos.');
+        }
+
+        return {
+          chapters: responseData.chapters,
+          storyId: responseData.storyId,
+          message: responseData.message // include if present and needed
+        };
+
+      } catch (error: any) {
+        // Re-throw the error so that react-query can handle it (e.g. onError callback in useMutation)
+        throw error;
       }
+      // finally {
+      //   setIsLoading(false); // useMutation handles its own loading state
+      // }
     }
   );
 
   return {
     getCharacterStory,
     getUserStories,
-    generateStory,
-    isLoading,
+    generateStory, // This now correctly aligns with the expected return type
+    isLoading, // This is the hook's own general isLoading state, separate from mutation's loading state
   };
 };
