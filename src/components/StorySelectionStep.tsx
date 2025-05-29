@@ -76,7 +76,7 @@ export const StorySelectionStep = ({ character, onSelectStory, onBack, isLoading
       }
 
       console.log('Enviando requisição com token de autenticação');
-
+      console.log("StorySelectionStep character:", JSON.stringify(character));
       const { data, error } = await supabase.functions.invoke('generate-story-chapters', {
         body: {
           storyTitle: selectedTitle,

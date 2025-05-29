@@ -89,19 +89,19 @@ const validateCharacter = (character: any): { isValid: boolean; errors: string[]
     errors.push('Gender is required');
   }
   
-  if (!character.corPele || character.corPele.trim() === '') {
+  if (!character.cor_pele || character.cor_pele.trim() === '') {
     errors.push('Skin color is required');
   }
   
-  if (!character.corCabelo || character.corCabelo.trim() === '') {
+  if (!character.cor_cabelo || character.cor_cabelo.trim() === '') {
     errors.push('Hair color is required');
   }
   
-  if (!character.corOlhos || character.corOlhos.trim() === '') {
+  if (!character.cor_olhos || character.cor_olhos.trim() === '') {
     errors.push('Eye color is required');
   }
   
-  if (!character.estiloCabelo || character.estiloCabelo.trim() === '') {
+  if (!character.estilo_cabelo || character.estilo_cabelo.trim() === '') {
     errors.push('Hair style is required');
   }
   
@@ -150,10 +150,10 @@ serve(async (req) => {
 
     // Translate character attributes to English
     const translatedGender = translateText(character.sexo);
-    const translatedSkinColor = translateText(character.corPele);
-    const translatedHairColor = translateText(character.corCabelo);
-    const translatedEyeColor = translateText(character.corOlhos);
-    const translatedHairStyle = translateText(character.estiloCabelo);
+    const translatedSkinColor = translateText(character.cor_pele);
+    const translatedHairColor = translateText(character.cor_cabelo);
+    const translatedEyeColor = translateText(character.cor_olhos);
+    const translatedHairStyle = translateText(character.estilo_cabelo);
 
     // Create detailed English prompt for Pixar 3D style
     const prompt = `Create a character in the style Pixar/Disney 3D based EXACTLY on this physical description : name ${character.nome}, ${character.idade} years old, ${translatedGender}, with ${translatedSkinColor}, ${translatedHairColor} hair in ${translatedHairStyle} style, and ${translatedEyeColor} eyes, front view only.Never ask feedback about the choice of the image.`;

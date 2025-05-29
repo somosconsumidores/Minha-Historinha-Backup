@@ -5,10 +5,10 @@ export interface Character {
   nome: string;
   idade: number;
   sexo: 'Masculino' | 'Feminino' | 'Outro';
-  corPele: string;
-  corCabelo: string;
-  corOlhos: string;
-  estiloCabelo: string;
+  cor_pele: string;
+  cor_cabelo: string;
+  cor_olhos: string;
+  estilo_cabelo: string;
   image_url?: string;
   storyTitle?: string;
   created_at?: string;

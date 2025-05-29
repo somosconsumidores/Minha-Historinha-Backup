@@ -116,7 +116,7 @@ export const useStories = () => {
         if (charError || !charData) {
           throw new Error(charError?.message || 'Personagem não encontrado');
         }
-
+        console.log("useStories charData:", JSON.stringify(charData));
         // 2) POST para a sua Edge Function via URL pública
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/generate-story-chapters`,

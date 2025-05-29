@@ -26,7 +26,7 @@ export const quizSteps: QuizStep[] = [
   {
     id: 4,
     title: 'Qual é a cor da pele?',
-    field: 'corPele',
+    field: 'cor_pele',
     type: 'select',
     options: [
       'Pele Clara',
@@ -41,7 +41,7 @@ export const quizSteps: QuizStep[] = [
   {
     id: 5,
     title: 'Qual é a cor do cabelo?',
-    field: 'corCabelo',
+    field: 'cor_cabelo',
     type: 'select',
     options: [
       'Preto',
@@ -59,7 +59,7 @@ export const quizSteps: QuizStep[] = [
   {
     id: 6,
     title: 'Qual é a cor dos olhos?',
-    field: 'corOlhos',
+    field: 'cor_olhos',
     type: 'select',
     options: [
       'Castanhos',
@@ -75,7 +75,7 @@ export const quizSteps: QuizStep[] = [
   {
     id: 7,
     title: 'Qual é o estilo do cabelo?',
-    field: 'estiloCabelo',
+    field: 'estilo_cabelo',
     type: 'select',
     options: [
       'Liso e Curto',

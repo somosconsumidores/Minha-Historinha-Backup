@@ -18,10 +18,10 @@ export const useCharacters = () => {
         nome: character.nome,
         idade: character.idade,
         sexo: character.sexo,
-        cor_pele: character.corPele,
-        cor_cabelo: character.corCabelo,
-        cor_olhos: character.corOlhos,
-        estilo_cabelo: character.estiloCabelo,
+        cor_pele: character.cor_pele,
+        cor_cabelo: character.cor_cabelo,
+        cor_olhos: character.cor_olhos,
+        estilo_cabelo: character.estilo_cabelo,
       };
 
       const { data, error } = await supabase
@@ -98,10 +98,10 @@ export const useCharacters = () => {
         nome: char.nome,
         idade: char.idade,
         sexo: char.sexo as 'Masculino' | 'Feminino' | 'Outro',
-        corPele: char.cor_pele,
-        corCabelo: char.cor_cabelo,
-        corOlhos: char.cor_olhos,
-        estiloCabelo: char.estilo_cabelo,
+        cor_pele: char.cor_pele, // Corrected key
+        cor_cabelo: char.cor_cabelo, // Corrected key
+        cor_olhos: char.cor_olhos, // Corrected key
+        estilo_cabelo: char.estilo_cabelo,
         image_url: char.image_url,
         created_at: char.created_at,
         updated_at: char.updated_at,

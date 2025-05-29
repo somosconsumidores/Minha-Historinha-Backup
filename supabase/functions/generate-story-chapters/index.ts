@@ -14,8 +14,10 @@ serve(async (req) => {
   }
 
   try {
+    const rawBody = await req.json();
+    console.log('Raw request body:', JSON.stringify(rawBody));
     // 1️⃣ Extrai apenas o que vem do cliente
-    const { storyTitle, character, characterId } = await req.json()
+    const { storyTitle, character, characterId } = rawBody;
 
     // 2️⃣ Validações básicas
     if (!storyTitle || !character || !characterId) {

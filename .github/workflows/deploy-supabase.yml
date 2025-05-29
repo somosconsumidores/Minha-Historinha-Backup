@@ -12,13 +12,27 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Setup Supabase CLI
-        run: npm install -g supabase
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
 
       - name: Deploy generate-story-chapters
         env:
           SUPABASE_ACCESS_TOKEN:   ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF:     ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
-          supabase login --token $SUPABASE_ACCESS_TOKEN
+          echo "Attempting to deploy function: generate-story-chapters"
+          echo "Using Project Ref (from SUPABASE_PROJECT_REF secret): $SUPABASE_PROJECT_REF"
           supabase functions deploy generate-story-chapters \
             --project-ref $SUPABASE_PROJECT_REF
+          echo "Deployment command finished."
+
+      - name: Deploy generate-chapter-illustration
+        env:
+          SUPABASE_ACCESS_TOKEN:   ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF:     ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          echo "Attempting to deploy function: generate-chapter-illustration"
+          echo "Using Project Ref (from SUPABASE_PROJECT_REF secret): $SUPABASE_PROJECT_REF"
+          supabase functions deploy generate-chapter-illustration             --project-ref $SUPABASE_PROJECT_REF
+          echo "Deployment command finished."

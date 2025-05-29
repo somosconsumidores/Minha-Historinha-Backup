@@ -5,11 +5,12 @@ import { quizSteps } from '../data/quizSteps';
 import { QuizStep } from './QuizStep';
 import { CharacterResult } from './CharacterResult';
 import { StorySelectionStep } from './StorySelectionStep';
+import { StoryWithIllustrations } from './StoryWithIllustrations'; // Added import
 import { useToast } from '@/hooks/use-toast';
 import { useCharacters } from '@/hooks/useCharacters';
 import { supabase } from '@/integrations/supabase/client';
 
-type FlowStep = 'quiz' | 'result' | 'story-selection';
+type FlowStep = 'quiz' | 'result' | 'story-selection' | 'story-view';
 
 export const CharacterCreator = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -18,10 +19,10 @@ export const CharacterCreator = () => {
     nome: '',
     idade: 0,
     sexo: 'Masculino',
-    corPele: '',
-    corCabelo: '',
-    corOlhos: '',
-    estiloCabelo: ''
+    cor_pele: '',
+    cor_cabelo: '',
+    cor_olhos: '',
+    estilo_cabelo: ''
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string>('');
@@ -103,10 +104,10 @@ export const CharacterCreator = () => {
       nome: '',
       idade: 0,
       sexo: 'Masculino',
-      corPele: '',
-      corCabelo: '',
-      corOlhos: '',
-      estiloCabelo: ''
+      cor_pele: '',
+      cor_cabelo: '',
+      cor_olhos: '',
+      estilo_cabelo: ''
     });
     setIsGenerating(false);
     setGeneratedImageUrl('');
@@ -168,8 +169,7 @@ export const CharacterCreator = () => {
     setSelectedStoryTitle(storyTitle);
     setCharacter(prev => ({ ...prev, storyTitle }));
     // Aqui podemos adicionar lógica para navegar para a visualização da história
-    // Por enquanto, voltamos para o resultado do personagem
-    setFlowStep('result');
+    setFlowStep('story-view');
     
     toast({
       title: "📖 História criada!",
@@ -191,6 +191,23 @@ export const CharacterCreator = () => {
         character={character}
         onSelectStory={handleSelectStory}
         onBack={handleBackToResult}
+      />
+    );
+  }
+
+  if (flowStep === 'story-view') {
+    console.log('📖 Renderizando StoryWithIllustrations');
+    if (!savedCharacterId || !selectedStoryTitle) {
+      console.error("Character ID or Story Title missing for story view. Navigating back to results.");
+      // Optionally, set flowStep back to 'result' or show a more prominent error
+      // For now, just logging and showing a simple error message.
+      // Consider calling handleRestart() or setFlowStep('result') if this state is problematic
+      return <p>Error: Character ID or selected story title is missing. Cannot display story.</p>;
+    }
+    return (
+      <StoryWithIllustrations
+        characterId={savedCharacterId}
+        storyTitle={selectedStoryTitle}
       />
     );
   }
