@@ -1,5 +1,4 @@
 // src/components/StoryWithIllustrations.tsx
-
 import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +26,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   const { toast } = useToast();
   // const { generateStory } = useStories(); // Commented out for testing
 
-  const minimalTestMutation = useMutation<any, Error, { testInput: string }>( // Defined directly in component
+  const minimalTestMutation = useMutation<any, Error, { testInput: string }>>(
     async (variables) => {
       console.log("Minimal test mutation CALLED with:", variables);
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -48,12 +47,15 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   console.log("StoryWithIllustrations: minimalTestMutation object:", minimalTestMutation);
   console.log("StoryWithIllustrations: Type of minimalTestMutation.mutateAsync:", typeof minimalTestMutation?.mutateAsync);
 
+  const queryClientFromHook = useQueryClient(); // New log for queryClientFromHook
+  console.log("StoryWithIllustrations: queryClient from useQueryClient():", queryClientFromHook);
+
   const [chapters, setChapters] = useState<string[]>([]);
   const [chapterIllustrations, setChapterIllustrations] = useState<Record<number, string>>({});
   const [storyId, setStoryId] = useState<string | null>(null);
   const [characterDetails, setCharacterDetails] = useState<CharacterDetails | null>(null);
   const [isLoadingCharacter, setIsLoadingCharacter] = useState(false);
-  const [isLoadingStory, setIsLoadingStory] = useState(false); // This will be driven by minimalTestMutation.isLoading now
+  const [isLoadingStory, setIsLoadingStory] = useState(false);
   const [isLoadingIllustrations, setIsLoadingIllustrations] = useState(false);
 
   useEffect(() => {
@@ -90,14 +92,11 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
     fetchCharacterDetails();
   }, [characterId, toast]);
 
-  // This function will not be called by handleGenerateStory in this test version
   const handleGenerateAllChapterIllustrations = useCallback(async (
     storyIdParam: string,
     chaptersParam: string[],
     charDetailsParam: CharacterDetails | null
   ) => {
-    // ... (implementation remains, but won't be directly triggered by the button in this test setup) ...
-    // For brevity, keeping the implementation as it was in the last full version you saw
     if (!storyIdParam || !chaptersParam.length || !charDetailsParam) {
       console.error('handleGenerateAllChapterIllustrations: Missing data.', { storyIdParam, chaptersLength: chaptersParam.length, charDetailsParam });
       toast({ title: 'Erro Interno', description: 'Dados insuficientes para gerar ilustrações.' });
@@ -135,7 +134,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
       setIsLoadingIllustrations(false);
       toast({ title: '✨ Ilustrações Finalizadas', description: 'Processo concluído.' });
     }
-  }, [chapterIllustrations, toast]); // Added dependencies
+  }, [chapterIllustrations, toast]);
 
   const handleGenerateStory = async () => {
     console.log("handleGenerateStory called. CharacterDetails:", characterDetails);
@@ -143,44 +142,42 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
       toast({ title: 'Aguarde', description: 'Detalhes do personagem ainda carregando ou não encontrados.' });
       return;
     }
-    // setIsLoadingStory(true); // Not using this specific state for minimalTestMutation's loading state
+    // setIsLoadingStory(true); // Using minimalTestMutation.isPending now
 
     try {
       console.log("Inside handleGenerateStory, trying minimalTestMutation. Type:", typeof minimalTestMutation?.mutateAsync);
       if (minimalTestMutation && typeof minimalTestMutation.mutateAsync === 'function') {
         const result = await minimalTestMutation.mutateAsync({ testInput: "hello from StoryWithIllustrations" });
         console.log("Result from minimalTestMutation.mutateAsync:", result);
-        // For this test, we are not setting chapters or calling handleGenerateAllChapterIllustrations
-        // The onSuccess of minimalTestMutation will show a toast.
+        toast({title: "Minimal Test Triggered", description: "Check console for logs."});
       } else {
         console.error("minimalTestMutation.mutateAsync is not a function inside handleGenerateStory");
         toast({title: "Debug Error", description: "minimalTestMutation.mutateAsync is not a function here.", variant: "destructive"});
       }
     } catch (err: any) {
       console.error('Erro ao chamar minimalTestMutation (em handleGenerateStory):', err);
-      // Error handling is also in minimalTestMutation's onError
-      // toast({ title: '❌ Erro no Teste', description: err.message, variant: 'destructive' });
     } finally {
       // setIsLoadingStory(false); // Not using this specific state for minimalTestMutation's loading state
     }
   };
 
-  // Use minimalTestMutation.isPending for loading state related to this test action
   const mainButtonDisabled = isLoadingCharacter || minimalTestMutation.isPending || !characterDetails;
   let buttonText = '✨ Testar Geração (Minimal)';
   if (isLoadingCharacter) buttonText = '🔍 Carregando Personagem...';
   else if (minimalTestMutation.isPending) buttonText = '🧪 Testando Mutação...';
-  // else if (chapters.length > 0) buttonText = '🎉 Gerar Novamente?'; // Original logic commented out for test
+  // else if (chapters.length > 0 && Object.keys(chapterIllustrations).length === chapters.length && chapters.length > 0) buttonText = '✅ Tudo Pronto!';
+  // else if (chapters.length > 0) buttonText = '🎨 Gerar Ilustrações Pendentes';
 
   return (
+    // JSX remains the same as the last full version I provided
     <div className="p-4">
       <button onClick={handleGenerateStory} disabled={mainButtonDisabled} className="px-4 py-2 bg-yellow-500 text-black rounded disabled:opacity-50 mb-4">
         {buttonText}
       </button>
 
-      {/* JSX for displaying character details and chapters/illustrations can remain as is, but will not be populated by this test */}
       {isLoadingCharacter && <p className="text-center my-4">Carregando detalhes do personagem...</p>}
       {!isLoadingCharacter && !characterDetails && characterId && <p className="text-center my-4 text-red-500">Não foi possível carregar os detalhes do personagem.</p>}
+
       {characterDetails && !isLoadingCharacter && (
         <div className="mb-4 p-4 border rounded-lg bg-slate-50">
           <h3 className="text-xl font-semibold">{characterDetails.nome}</h3>
@@ -188,6 +185,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
         </div>
       )}
       {minimalTestMutation.isError && <p className="text-red-500 text-center">Minimal Test Mutation Error: {minimalTestMutation.error?.message}</p>}
+      {/* Chapter display logic can remain but won't be populated by this test button */}
       {chapters.length > 0 && (
         <div className="mt-6 space-y-8">
           <h2 className="text-2xl font-bold text-center mb-4">{storyTitle} (ID: {storyId})</h2>

@@ -4,11 +4,10 @@ import App from './App.tsx';
 import './index.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Create a client instance
 const queryClient = new QueryClient();
+console.log("Main.tsx: QueryClient instance created:", queryClient); // Added log
 
 const rootElement = document.getElementById('root');
-
 if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
