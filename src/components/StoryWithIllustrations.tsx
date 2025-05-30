@@ -26,7 +26,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   const { toast } = useToast();
   // const { generateStory } = useStories(); // Commented out for testing
 
-  const minimalTestMutation = useMutation<any, Error, { testInput: string }>>(
+  const minimalTestMutation = useMutation<any, Error, { testInput: string }>(
     async (variables) => {
       console.log("Minimal test mutation CALLED with:", variables);
       await new Promise(resolve => setTimeout(resolve, 100));
