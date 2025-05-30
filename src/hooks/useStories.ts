@@ -3,8 +3,6 @@ import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-// Ensure Character type is imported if CharacterDetails relies on it, though not directly used in this file's public interface
-// import { Character } from '@/types/Character'; 
 
 export interface Story {
   id: string;
@@ -23,13 +21,13 @@ type GenerateChaptersInput = {
 type GenerateStoryHookResult = {
   chapters: string[];
   storyId: string;
-  message?: string; 
+  message?: string;
 };
 
 export const useStories = () => {
-  const [isLoading, setIsLoading] = useState(false); // For getCharacterStory & getUserStories
-  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const getCharacterStory = useCallback(async (characterId: string): Promise<Story | null> => {
     setIsLoading(true);
@@ -42,12 +40,11 @@ export const useStories = () => {
 
       if (error) {
         if (error.code === 'PGRST116') return null;
-        console.error('Erro ao buscar história específica:', error);
         throw error;
       }
-      // Ensure chapter fields match your DB table structure
+
       const chapters = Array.from({ length: 10 }, (_, i) => data[`chapter_${i + 1}`]).filter(Boolean) as string[];
-      
+
       return {
         id: data.id,
         title: data.title,
@@ -57,8 +54,8 @@ export const useStories = () => {
         created_at: data.created_at,
       };
     } catch (err: any) {
-      console.error('Exceção em getCharacterStory:', err);
-      toast({ title: '⚠️ Aviso', description: err.message || 'Não foi possível carregar a história.' });
+      console.error('Erro ao buscar história:', err);
+      toast({ title: '⚠️ Aviso', description: 'Não foi possível carregar a história.' });
       return null;
     } finally {
       setIsLoading(false);
@@ -70,11 +67,10 @@ export const useStories = () => {
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if(authError || !user) {
-        // Handle case where user is not authenticated, maybe return empty or throw specific error
         console.warn('getUserStories: User not authenticated.');
-        return []; // Or throw authError || new Error('User not authenticated.');
+        return [];
       }
-      
+
       const { data, error } = await supabase
         .from('generated_stories')
         .select('*')
@@ -93,7 +89,7 @@ export const useStories = () => {
       }));
     } catch (err: any) {
       console.error('Erro ao buscar todas as histórias:', err);
-      toast({ title: '❌ Erro', description: err.message || 'Não foi possível carregar suas histórias.' });
+      toast({ title: '❌ Erro', description: 'Não foi possível carregar suas histórias.' });
       return [];
     } finally {
       setIsLoading(false);
@@ -101,10 +97,10 @@ export const useStories = () => {
   }, [toast]);
 
   const generateStory = useMutation<GenerateStoryHookResult, Error, GenerateChaptersInput>(
-    async ({ characterId, storyTitle }) => {
+    async ({ characterId, storyTitle }: GenerateChaptersInput) => {
       const { data: charData, error: charError } = await supabase
         .from('characters')
-        .select('id, nome, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo, image_url') 
+        .select('id, nome, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo, image_url')
         .eq('id', characterId)
         .single();
 
@@ -121,12 +117,12 @@ export const useStories = () => {
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/generate-story-chapters`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, 
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ storyTitle, characterId, character: charData }) 
+        body: JSON.stringify({ storyTitle, characterId, character: charData })
       });
 
       if (!res.ok) {
@@ -148,34 +144,16 @@ export const useStories = () => {
       return {
         chapters: responseData.chapters,
         storyId: responseData.storyId,
-        message: responseData.message 
+        message: responseData.message
       };
-    },
-    {
-      onError: (error: Error) => {
-        toast({
-          title: '❌ Erro ao Gerar História',
-          description: error.message || 'Falha na comunicação com o servidor.',
-          variant: 'destructive',
-        });
-      },
-      onSuccess: (data, variables) => { 
-        console.log('Story chapters generated successfully:', data);
-        toast({
-          title: '✅ Capítulos da História Gerados!',
-          description: data.message || 'Os capítulos da sua história foram criados.',
-        });
-        // Example: Invalidate queries to refetch story lists or specific stories
-        // queryClient.invalidateQueries({ queryKey: ['userStories'] });
-        // queryClient.invalidateQueries({ queryKey: ['characterStory', variables.characterId] });
-      },
     }
+    // Options object { onError, onSuccess } REMOVED from here
   );
 
   return {
     getCharacterStory,
     getUserStories,
     generateStory,
-    isLoading, 
+    isLoading,
   };
 };
