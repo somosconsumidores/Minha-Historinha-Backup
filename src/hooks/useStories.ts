@@ -21,12 +21,12 @@ type GenerateChaptersInput = {
 type GenerateStoryHookResult = {
   chapters: string[];
   storyId: string;
-  message?: string;
+  message?: string; 
 };
 
 export const useStories = () => {
   const queryClient = useQueryClient();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); 
   const { toast } = useToast();
 
   const getCharacterStory = useCallback(async (characterId: string): Promise<Story | null> => {
@@ -40,11 +40,11 @@ export const useStories = () => {
 
       if (error) {
         if (error.code === 'PGRST116') return null;
+        console.error('Erro ao buscar história específica:', error);
         throw error;
       }
-
       const chapters = Array.from({ length: 10 }, (_, i) => data[`chapter_${i + 1}`]).filter(Boolean) as string[];
-
+      
       return {
         id: data.id,
         title: data.title,
@@ -54,8 +54,8 @@ export const useStories = () => {
         created_at: data.created_at,
       };
     } catch (err: any) {
-      console.error('Erro ao buscar história:', err);
-      toast({ title: '⚠️ Aviso', description: 'Não foi possível carregar a história.' });
+      console.error('Exceção em getCharacterStory:', err);
+      toast({ title: '⚠️ Aviso', description: err.message || 'Não foi possível carregar a história.' });
       return null;
     } finally {
       setIsLoading(false);
@@ -68,9 +68,9 @@ export const useStories = () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if(authError || !user) {
         console.warn('getUserStories: User not authenticated.');
-        return [];
+        return []; 
       }
-
+      
       const { data, error } = await supabase
         .from('generated_stories')
         .select('*')
@@ -89,7 +89,7 @@ export const useStories = () => {
       }));
     } catch (err: any) {
       console.error('Erro ao buscar todas as histórias:', err);
-      toast({ title: '❌ Erro', description: 'Não foi possível carregar suas histórias.' });
+      toast({ title: '❌ Erro', description: err.message || 'Não foi possível carregar suas histórias.' });
       return [];
     } finally {
       setIsLoading(false);
@@ -100,7 +100,7 @@ export const useStories = () => {
     async ({ characterId, storyTitle }: GenerateChaptersInput) => {
       const { data: charData, error: charError } = await supabase
         .from('characters')
-        .select('id, nome, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo, image_url')
+        .select('id, nome, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo, image_url') 
         .eq('id', characterId)
         .single();
 
@@ -117,12 +117,12 @@ export const useStories = () => {
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/generate-story-chapters`, {
         method: 'POST',
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, 
         },
-        body: JSON.stringify({ storyTitle, characterId, character: charData })
+        body: JSON.stringify({ storyTitle, characterId, character: charData }) 
       });
 
       if (!res.ok) {
@@ -144,16 +144,33 @@ export const useStories = () => {
       return {
         chapters: responseData.chapters,
         storyId: responseData.storyId,
-        message: responseData.message
+        message: responseData.message 
       };
+    },
+    { // Options object restored
+      onError: (error: Error) => {
+        toast({
+          title: '❌ Erro ao Gerar História',
+          description: error.message || 'Falha na comunicação com o servidor.',
+          variant: 'destructive',
+        });
+      },
+      onSuccess: (data, variables) => { 
+        console.log('Story chapters generated successfully via useStories:', data);
+        toast({
+          title: '✅ Capítulos da História Gerados!',
+          description: data.message || 'Os capítulos da sua história foram criados.',
+        });
+        // Example: queryClient.invalidateQueries({ queryKey: ['userStories'] });
+        // queryClient.invalidateQueries({ queryKey: ['characterStory', variables.characterId] });
+      },
     }
-    // Options object { onError, onSuccess } REMOVED from here
   );
 
   return {
     getCharacterStory,
     getUserStories,
     generateStory,
-    isLoading,
+    isLoading, 
   };
 };
