@@ -61,8 +61,9 @@ const QueryMinimalTest = () => {
 };
 
 export default QueryMinimalTest;
-2. Modified file: src/App.tsx (This temporarily replaces your normal App component to only show the test component)
+2. Modified file: src/App.tsx (This temporarily replaces your normal App component)
 
+// src/App.tsx
 import React from 'react';
 import QueryMinimalTest from './components/QueryMinimalTest';
 
@@ -72,5 +73,3 @@ const App = () => {
     <QueryMinimalTest />
   );
 };
-
-export default App;
