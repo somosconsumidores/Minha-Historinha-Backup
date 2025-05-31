@@ -43,8 +43,8 @@ const QueryMinimalTest = () => {
     <div>
       <h1>React Query Minimal Test Page</h1>
       <p>Check the console when this page loads and when you click the button.</p>
-      <button
-        onClick={handleClick}
+      <button 
+        onClick={handleClick} 
         disabled={testMutation.isPending}
         style={{ padding: '10px', fontSize: '16px', margin: '10px' }}
       >
@@ -61,15 +61,3 @@ const QueryMinimalTest = () => {
 };
 
 export default QueryMinimalTest;
-2. Modified file: src/App.tsx (This temporarily replaces your normal App component)
-
-// src/App.tsx
-import React from 'react';
-import QueryMinimalTest from './components/QueryMinimalTest';
-
-const App = () => {
-  console.log("App.tsx: Rendering QueryMinimalTest");
-  return (
-    <QueryMinimalTest />
-  );
-};
