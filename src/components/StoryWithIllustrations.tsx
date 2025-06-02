@@ -2,21 +2,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useStories } from '@/hooks/useStories'; // Restored
+import { useStories } from '@/hooks/useStories'; 
 import { Character } from '@/types/Character';
-import { useQueryClient } from '@tanstack/react-query'; // Keep for queryClientFromHook log
+import { useQueryClient } from '@tanstack/react-query'; 
 
 interface StoryWithIllustrationsProps {
   characterId: string;
   storyTitle: string;
 }
 
-type CharacterDetails = Character & {
-  image_url: string;
+type CharacterDetails = Character & { 
+  image_url: string; 
   cor_pele?: string;
   cor_cabelo?: string;
   cor_olhos?: string;
-  estilo_cabelo?: string;
+  estilo_cabelo?: string; 
 };
 
 export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
@@ -24,13 +24,12 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   storyTitle,
 }) => {
   const { toast } = useToast();
-  const { generateStory } = useStories(); // Restored
+  const { generateStory } = useStories(); 
 
-  // Logs to inspect generateStory from the hook
   console.log("StoryWithIllustrations: generateStory from useStories:", generateStory);
   console.log("StoryWithIllustrations: Type of generateStory.mutateAsync:", typeof generateStory?.mutateAsync);
 
-  const queryClientFromHook = useQueryClient();
+  const queryClientFromHook = useQueryClient(); 
   console.log("StoryWithIllustrations: queryClient from useQueryClient():", queryClientFromHook);
 
   const [chapters, setChapters] = useState<string[]>([]);
@@ -43,7 +42,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
 
   useEffect(() => {
     if (!characterId) {
-      setCharacterDetails(null);
+      setCharacterDetails(null); 
       return;
     }
     const fetchCharacterDetails = async () => {
@@ -52,16 +51,16 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
       try {
         const { data, error } = await supabase
           .from('characters')
-          .select('id, nome, image_url, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo')
+          .select('id, nome, image_url, idade, sexo, cor_pele, cor_cabelo, cor_olhos, estilo_cabelo') 
           .eq('id', characterId)
           .single();
         if (error) throw error;
         if (data) {
           console.log('Character details fetched:', data);
-          setCharacterDetails(data as CharacterDetails);
+          setCharacterDetails(data as CharacterDetails); 
         } else {
           console.warn('No character data found for ID:', characterId);
-          setCharacterDetails(null);
+          setCharacterDetails(null); 
           toast({ title: 'Aviso', description: 'Detalhes do personagem não encontrados.' });
         }
       } catch (err: any) {
@@ -76,9 +75,9 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   }, [characterId, toast]);
 
   const handleGenerateAllChapterIllustrations = useCallback(async (
-    storyIdParam: string,
-    chaptersParam: string[],
-    charDetailsParam: CharacterDetails | null
+    storyIdParam: string, 
+    chaptersParam: string[], 
+    charDetailsParam: CharacterDetails | null 
   ) => {
     if (!storyIdParam || !chaptersParam.length || !charDetailsParam) {
       console.error('handleGenerateAllChapterIllustrations: Missing data.', { storyIdParam, chaptersLength: chaptersParam.length, charDetailsParam });
@@ -141,25 +140,25 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
     try {
       console.log("Inside handleGenerateStory, typeof generateStory?.mutateAsync:", typeof generateStory?.mutateAsync);
       console.log("Calling generateStory.mutateAsync with:", { characterId, storyTitle });
-
+      
       const result = await generateStory.mutateAsync({
-        characterId,
+        characterId, 
         storyTitle,
       });
-      console.log("Result from generateStory.mutateAsync:", result);
-
+      console.log("Result from generateStory.mutateAsync (mock expected from useStories):", result);
+      
       if (result && result.chapters && result.storyId) {
         setChapters(result.chapters);
         setStoryId(result.storyId);
-        // Toast for success is handled by useStories' onSuccess callback now
-
-        if (characterDetails) {
-            // If using the ultra-simplified mock in useStories, result.storyId will start with "mock-id"
-            if (result.storyId.startsWith("mock-id")) {
-                console.log("Skipping actual illustration generation as useStories returned mock data.");
-            } else {
-                await handleGenerateAllChapterIllustrations(result.storyId, result.chapters, characterDetails);
-            }
+        // Toast for success is handled by useStories' onSuccess callback
+        
+        // This part will use mock data for chapters if useStories is still mocked,
+        // but it will try to call the REAL illustration function.
+        if (characterDetails) { 
+          if (result.storyId.startsWith("mock-id")) { // Check if using mocked storyId
+              console.log("Story chapters are mock data. Illustrations might not be contextually relevant but will use real character details.");
+          }
+          await handleGenerateAllChapterIllustrations(result.storyId, result.chapters, characterDetails); 
         } else {
             console.error("CharacterDetails became null before starting illustration generation.");
             toast({ title: 'Atenção', description: 'Detalhes do personagem não disponíveis para iniciar ilustrações.'});
@@ -170,17 +169,14 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
       }
     } catch (err: any) {
       console.error('Erro ao gerar história (em handleGenerateStory):', err);
-      // Toasting for the mutation error itself is handled by useStories hook's onError.
-      // This catch block will primarily catch errors if mutateAsync itself is not a function (like 'No mutationFn found')
-      // or other synchronous errors before the async mutation function executes.
-      if (!err.message || !err.message.includes("mutationFn")) {
+      if (!err.message || !err.message.includes("mutationFn")) { 
         toast({ title: '❌ Erro ao Iniciar Geração de História', description: err.message || "Falha desconhecida.", variant: 'destructive' });
       }
     } finally {
       setIsLoadingStory(false);
     }
   };
-
+  
   const mainButtonDisabled = isLoadingCharacter || isLoadingStory || isLoadingIllustrations || !characterDetails || (generateStory && generateStory.isPending);
   let buttonText = '✨ Gerar História e Ilustrações';
   if (isLoadingCharacter) buttonText = '🔍 Carregando Personagem...';
@@ -190,7 +186,7 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
   else if (chapters.length > 0) buttonText = '🎨 Gerar Ilustrações Pendentes';
 
   return (
-    // JSX structure remains the same
+    // JSX is the same as the last full version I provided 
     <div className="p-4">
       <button onClick={handleGenerateStory} disabled={mainButtonDisabled} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 mb-4">
         {buttonText}
@@ -198,11 +194,11 @@ export const StoryWithIllustrations: React.FC<StoryWithIllustrationsProps> = ({
 
       {isLoadingCharacter && <p className="text-center my-4">Carregando detalhes do personagem...</p>}
       {!isLoadingCharacter && !characterDetails && characterId && <p className="text-center my-4 text-red-500">Não foi possível carregar os detalhes do personagem.</p>}
-
+      
       {characterDetails && !isLoadingCharacter && (
         <div className="mb-4 p-4 border rounded-lg bg-slate-50">
           <h3 className="text-xl font-semibold">{characterDetails.nome}</h3>
-          {characterDetails.image_url && <img src={characterDetails.image_url} alt={characterDetails.nome} className="w-32 h-32 rounded-md my-2 object-cover" />}
+          {characterDetails.image_url && <img src={characterDetails.image_url} alt={characterDetails.nome} className="w-32 h-32 rounded-md my-2 object-cover" />}          
         </div>
       )}
 
