@@ -147,7 +147,7 @@ export const useStories = () => {
         message: responseData.message
       };
     },
-    { // Options object restored
+    { // Options object is present
       onError: (error: Error) => {
         toast({
           title: '❌ Erro ao Gerar História',
